@@ -1,0 +1,6 @@
+useDynLib(BHC)
+export(bhc)
+export(WriteOutClusterLabels)
+importFrom(stats, dendrapply, is.leaf, optimise)
+importFrom(utils, write.table)
+
