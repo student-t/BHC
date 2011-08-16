@@ -1,4 +1,4 @@
-#include "header.h"
+#include "multinomial_header.h"
 
 //Function: binevidence.
 //
@@ -23,7 +23,7 @@ double binevidence(NODE* tr_node, int dim, double** hyperParameters,int index1, 
   double*  sumHyper = new double[dim];
   int      i, j, k;
   int      nTotalData;
-  double   s1=0., s2=0., s3=0., s4=0., s5=0., s6=0.;
+  double   s2=0., s3=0., s5=0., s6=0.; // unused: s1 and s4
   //construct dynamically a 2D array 
   double** dataCounter;
   dataCounter = new double* [dim];
@@ -57,13 +57,13 @@ double binevidence(NODE* tr_node, int dim, double** hyperParameters,int index1, 
     //some require sums over the different allowed feature values
     for (j=0;j<nFeatureValues;j++){
       //if (dataCounter[i][j]!=0) 
-      //s1 += gammaln(dataCounter[i][j]); //use lngamma to find log-factorial, except for zero
-      s2 += gammaln(hyperParameters[j][i]);
-      s3 += gammaln(hyperParameters[j][i] + dataCounter[i][j]);
+      //s1 += fast_gammaln(dataCounter[i][j]); //use lngamma to find log-factorial, except for zero
+      s2 += fast_gammaln(hyperParameters[j][i]);
+      s3 += fast_gammaln(hyperParameters[j][i] + dataCounter[i][j]);
     }
-    //s4 += gammaln(nTotalData); //really only need to do this once!
-    s5 += gammaln(sumHyper[i]);
-    s6 += gammaln(sumHyper[i] + nTotalData);
+    //s4 += fast_gammaln(nTotalData); //really only need to do this once!
+    s5 += fast_gammaln(sumHyper[i]);
+    s6 += fast_gammaln(sumHyper[i] + nTotalData);
   }
   //----------------------------------------------------------------------
   // CALCULATE THE LOG-EVIDENCE ------------------------------------------

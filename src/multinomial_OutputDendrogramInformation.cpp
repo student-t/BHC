@@ -1,4 +1,4 @@
-#include "header.h"
+#include "multinomial_header.h"
 //Routine to ˚output the BHC dendrogram information
 void OutputDendrogramInformation(NODE* tr_node, int dim, int obs){
   //----------------------------------------------------------------------

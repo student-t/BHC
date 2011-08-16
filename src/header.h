@@ -1,33 +1,41 @@
+#ifndef HEADER_H
+#define HEADER_H
+
+#define NDEBUG // no debug - disable things like asserts
+
+// Handy macros
+#define MAX(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
+extern bool fast_switch; // Currently not used
+
+// Includes from the STL
 #include <iostream>
+#include <iomanip>
 #include <fstream>
-using namespace std;
+#include <sstream>
 #include <stdlib.h>
+#include <climits>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <math.h>
+#include <assert.h>
+#include <numeric>
+// From this package
+#include "gammaln.h"
+// R includes
+#include "Rconfig.h"
 
-//Structure: NODE.
-//Represents a node in the dendrogram.
-struct NODE {
-		double** dat;
-		double   ck;
-		double   nk;
-		double*  num1;
-		double*  num2;
-		double*  wt;
-		double   den;
-		int      pleft;
-		int      pright;
-		int      flag;
-		int      vec_no;
-};
+#ifdef SUPPORT_OPENMP
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#undef SUPPORT_OPENMP
+#endif
+#endif
 
-double bayeslink_binf(NODE* tr_node, int dim, int obs, 
-		      double cc, double alp, double min_wt, int nFeatureValues);
+using namespace std;
 
-double binevidence(NODE* tr_node, int dim, double** hyperParameters, int index1, int index2, int nFeatureValues);
+#endif // HEADER_H
 
-double gammaln(double x);
-
-NODE* ReadInData(int dim, int obs, double min_wt, int nFeatureValues, int* inputData);
-
-double** CalculateHyperparameters(NODE* tr_node, int dim, int obs, int nFeatureValues, double cc);
-
-void OutputDendrogramInformation(NODE* tr_node, int dim, int obs);

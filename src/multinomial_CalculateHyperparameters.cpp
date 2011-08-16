@@ -1,4 +1,4 @@
-#include "header.h"
+#include "multinomial_header.h"
 //Routine to calculate the alpha hyperparameters for the BHC clustering.
 
 //Katherine Heller's BHC code calcualte hyperparameters as being proportional to the population mean proportion of each featuer value

@@ -76,8 +76,9 @@ ConstructDendrogramObject <- function(out, nDataItems, nFeatures, itemLabels){
     tree[[newIndex]] <- newMerge
   }
   ##and the result we want should be in the last element of tree
-  outputDendrogram        <- newMerge
-  class(outputDendrogram) <- "dendrogram"
+  outputDendrogram                      <- newMerge
+  class(outputDendrogram)               <- "dendrogram"
+  attr(outputDendrogram, "logEvidence") <- out$logEvidence
   ##return the output dendrogram
   outputDendrogram
 }

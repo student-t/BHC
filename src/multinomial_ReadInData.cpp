@@ -1,4 +1,4 @@
-#include "header.h"
+#include "multinomial_header.h"
 //Routine to read in data for the BHC code
 //For the R-interfaced version of this code, the data are passed to this function
 //in a 1D array.  They're then copied into the NODE structures.
@@ -40,7 +40,7 @@ NODE* ReadInData(int dim, int obs, double min_wt, int nFeatureValues, int* input
       for (j=0;j<dim;j++){
 	inputValue = inputData[counter++];
 	//check that this value is legal
-	if (inputValue <0 | inputValue >= nFeatureValues)  
+	if (inputValue <0 || inputValue >= nFeatureValues)  
 	  cout << "Error! Input value outside range " << i << " " << j << " " << inputValue << endl; 		     
 	//if so, add one to the relevant counter
 	//actually, we will only have one value here for each feature for each data item
