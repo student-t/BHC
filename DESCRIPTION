@@ -1,8 +1,8 @@
 Package: BHC
 Type: Package
 Title: Bayesian Hierarchical Clustering
-Version: 1.2.0
-Date: 2011-07-28
+Version: 1.5.0
+Date: 2011-08-17
 Author: Rich Savage, Emma Cooke, and Robert Darkins (C++ code originally written by Yang Xu)
 Maintainer: Rich Savage <r.s.savage@warwick.ac.uk>
 Description: The method performs bottom-up hierarchical clustering, using a Dirichlet Process (infinite mixture) to model uncertainty in the data and Bayesian model selection to decide at each step which clusters to merge.  This avoids several limitations of traditional methods, for example how many clusters there should be and how to choose a principled distance metric.  This implementation accepts multinomial (i.e. discrete, with 2+ categories) or time-series data.
