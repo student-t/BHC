@@ -17,16 +17,6 @@ vector<Node> DirichletProcessMixture::GreedyClustering(DataSet* dataSet, bool ve
   vector<int> mergeIndex; //holds the indices of Nodes to be merged
   Node mergedNode;
   int i;
-  double t0,dt;
-
-  // Start the timer
-#ifdef SUPPORT_OPENMP
-  // This is thread-safe
-  t0 = omp_get_wtime();
-#else
-  // This is *not* thread-safe
-  t0 = clock();
-#endif
 
   // We want 4 decimal places of output for the log ev's
   cout.precision(4);
@@ -43,25 +33,6 @@ vector<Node> DirichletProcessMixture::GreedyClustering(DataSet* dataSet, bool ve
       cout << "Number of data items:\t" << dataSet->nDataItems << endl;
       cout << "Number of features:\t" << dataSet->nFeatures << endl;
       cout << "Algorithm:\t\tGreedy clustering" << endl;
-      cout << "Parallelisation:\t";
-#ifdef SUPPORT_OPENMP
-      // Find the number of threads
-      int num_threads=1; // num_threads=omp_get_max_threads();
-#pragma omp parallel
-#pragma omp master
-      num_threads=omp_get_num_threads();
-      
-      if(num_threads > 1)
-	{
-	  cout << num_threads  << " threads" << endl;
-	}else
-	{
-	  cout << "serial" << endl;
-	}
-#else
-      cout << "serial" << endl;
-#endif // SUPPORT_OPENMP
-      
       cout << "\nNode\tMerges\t\tLog Ev" << endl;
       cout << "----\t------\t\t------" << endl;
     }
@@ -137,21 +108,12 @@ vector<Node> DirichletProcessMixture::GreedyClustering(DataSet* dataSet, bool ve
     */
   }
 
-  // Stop the timer
-#ifdef SUPPORT_OPENMP
-  dt = omp_get_wtime() - t0;
-#else
-  dt = clock() - t0;
-  dt /= CLOCKS_PER_SEC;
-#endif
-
   if(verbose)
     {
       //PRINT OUT THE LOWER BOUND ON THE OVERALL MODEL LOG EVIDENCE
       cout << "\n(Lower bound) model Log Ev:\t"
 	   << fixed << mergedNode.GetGlobalLogEvidence() << endl;
       cout.precision(2);
-      cout << "Time taken:\t\t\t" << fixed << dt << " s" << endl;
       cout << "BHC END ======================================" << endl;
     }
   
