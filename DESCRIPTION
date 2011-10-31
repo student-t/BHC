@@ -1,7 +1,7 @@
 Package: BHC
 Type: Package
 Title: Bayesian Hierarchical Clustering
-Version: 1.5.1
+Version: 1.6.0
 Date: 2011-08-17
 Author: Rich Savage, Emma Cooke, and Robert Darkins (C++ code originally written by Yang Xu)
 Maintainer: Rich Savage <r.s.savage@warwick.ac.uk>
