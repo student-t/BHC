@@ -1,9 +1,24 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <math.h>
 #include <iostream>
 using namespace std;
 
-// Evaluate log(Gamma(x))
-// From Tom Minka (Microsoft Research Cambridge).
+/* ----------------------------------------------------------------------
+   Evaluate log(Gamma(x))
+   From Tom Minka (Microsoft Research Cambridge)
+---------------------------------------------------------------------- */
+
 double gammaln(double x)
 {
   const static double M_lnSqrt2PI=0.91893853320467274178;
@@ -28,11 +43,16 @@ double gammaln(double x)
   return M_lnSqrt2PI + (x+0.5)*log(x1) - x1 + log(series/x);
 }
 
-// Precomputes a lookup table for the interval [LB,UB2) and uses
-// quadratic interpolation to approximate gammaln on this interval.
-// This is much faster than reevaluating gammaln each time, and is
-// typically accurate to around 5 decimal places.
-// (Stores 48 KB on the stack)
+/* ----------------------------------------------------------------------
+   This is a fast version of the log(Gamma(x)) function.
+   
+   It precomputes a lookup table for the interval [LB,UB2] on the first
+   call, and uses quadratic interpolation to approximate gammaln on this
+   interval.
+
+   It is typically accurate to 5 d.p. and stores 48 KB on the stack.
+---------------------------------------------------------------------- */
+
 double fast_gammaln(double x)
 {
   const static double LB=0.01;

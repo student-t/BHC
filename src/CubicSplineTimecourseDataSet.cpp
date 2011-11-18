@@ -1,61 +1,73 @@
-#include "CubicSplineTimecourseDataSet.h"
-#include "BlockCovarianceMatrix.h"
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <limits>
 
+#include "CubicSplineTimecourseDataSet.h"
+#include "BlockCovarianceMatrix.h"
 
-// Default constructor.
+/* ----------------------------------------------------------------------
+   Default constructor.
+---------------------------------------------------------------------- */
+
 CubicSplineTimecourseDataSet::CubicSplineTimecourseDataSet() {}
 
+/* ---------------------------------------------------------------------- */
 
-
-// Constructor.
 CubicSplineTimecourseDataSet::CubicSplineTimecourseDataSet(string dataFile)
 {
-  //READ IN THE DATA FROM FILE
   ReadInData(dataFile);
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-// Constructor.
-CubicSplineTimecourseDataSet::CubicSplineTimecourseDataSet(const vector<vector<double> >& inputData)
+CubicSplineTimecourseDataSet::
+CubicSplineTimecourseDataSet(const vector<vector<double> >& inputData)
 {
-  //COPY THE DATA INTO THE OBJECT
+  // Copy the data into the object
   data = inputData;
 
-  //FIND THE DATA SIZE
+  // Find the data size
   nDataItems = data.size();
   nFeatures = data[0].size();
   nTimePoints = nFeatures;
 
-  //PRINT OUT SOME USEFUL INFORMATION
-  cout << "----------" << endl;
-  cout << "nTimeSeries: " << nDataItems << endl;
-  cout << "nTimePoints: " << nTimePoints << endl;
-  cout << "----------" << endl;
+  // Print out some useful information
+  //cout << "----------" << endl;
+  //cout << "nTimeSeries: " << nDataItems << endl;
+  //cout << "nTimePoints: " << nTimePoints << endl;
+  //cout << "----------" << endl;
 }
 
-
-
-// Compute the log-evidence for a single cluster containing the data items
-// identified by itemIndex.
-// 
-// For now we just find optimised hyperparameters here; in general, we could consider
-// marginalising over them. If we're optimising the hyperparameters, do we care about
-// storing the best-fit values? (Knowing about the noise level, for example, might be
-// interesting). If so, we'll need a way of returning the hyperparameters to R.
-// Perhaps the Node class needs the capacity to store the best-fit hyperparameters for
-// the mixture component it represents?
-double CubicSplineTimecourseDataSet::SingleClusterLogEvidence(const vector<int>& itemIndex, double& lengthScale, double& noiseFreeScale, double& noiseSigma, double& mixtureComponent)
+/* ----------------------------------------------------------------------
+   Compute the log-evidence for a single cluster containing the data items
+   identified by itemIndex.
+---------------------------------------------------------------------- */
+ 
+double CubicSplineTimecourseDataSet::
+SingleClusterLogEvidence(const vector<int>& itemIndex,
+			 double& lengthScale,
+			 double& noiseFreeScale,
+			 double& noiseSigma,
+			 double& mixtureComponent)
 {
-  //DECLARATIONS
+  // Declarations
   int i, j, index;
   const int nCurrentItems=itemIndex.size();
   double logEvidence=-numeric_limits<double>::infinity(), replicateNoise;
   vector<double> yValues=vector<double>(nCurrentItems*nTimePoints);
 
-  //EXTRACT THE DATA POINTS FOR THIS CURRENT CLUSTER
-  // Store the relevant data in row-major order in yValues
+  // Extract the data points for this current cluster;
+  // store the relevant data in row-major order in yValues
   for (i=0; i<nCurrentItems; i++)
   {
     index=i;
@@ -66,7 +78,7 @@ double CubicSplineTimecourseDataSet::SingleClusterLogEvidence(const vector<int>&
     }
   }
 
-  //OPTIMISE THE HYPERPARAMETERS (LENGTH SCALE); RETURN THE OPTIMISED LOG-EVIDENCE VALUE
+  // Optimise the hyperparameters (length-scale)
   if (noise_mode == 0)
   {
     OptimiseHyperparameters(yValues, noiseFreeScale, noiseSigma);
@@ -86,26 +98,25 @@ double CubicSplineTimecourseDataSet::SingleClusterLogEvidence(const vector<int>&
   }
   else
   {
-    cout << "error: noise_mode not recogised" <<endl;
+    cout << "Error! noise_mode not recognised" <<endl;
   }
 
   return logEvidence;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-// 
 double CubicSplineTimecourseDataSet::ComputeMaximisedLogEvidence(const vector<double>& yValues, double& noiseFreeScale, double& noiseSigma)
 {
-  //DECLARATIONS
+  // Declarations
   int blockSize;
   BlockCovarianceMatrix covarFunction;
   double logEvidence;
-  
-  //FIND BLOCK SIZE
+
+  // Find block size
   blockSize = yValues.size() / nTimePoints;
-  
-  //CALCULATE MAXIMISED LOG_EVIDENCE
+
+  // Calculate maximised log evidence
   covarFunction = CubicSplineCovarianceFunction(blockSize, noiseFreeScale);
   covarFunction = AddNoiseToCovarianceFunction(covarFunction, noiseSigma);
   logEvidence = ComputeLogEvidence(covarFunction, yValues);
@@ -113,17 +124,25 @@ double CubicSplineTimecourseDataSet::ComputeMaximisedLogEvidence(const vector<do
   return logEvidence;
 }
 
+/* ----------------------------------------------------------------------
+   Optimise the hyperparameters for the GP model, returning the optimal log-evidence.
+   
+   xValues should contain the distinct time points (*not* duplicates).
+   This method uses a simple implementation of a gradient ascent method.
+   Hyperparameters are:
+      - length-scale (of the SE covariance function)
+      - the noiseFreeScale (ie. amplitude of the SE covariance function term)
+      - noiseSigma
 
-
-// Optimise the hyperparameters for the GP model, returning the optimal log-evidence.
-// 
-// xValues should contain the distinct time points (*not* duplicates)
-// This method uses a simple implementation of a gradient ascent method.
-// Hyperparameters are:
-//   - length-scale (of the SE covariance function)
-//   - the noiseFreeScale (ie. amplitude of the SE covariance function term)
-//   - noiseSigma
-void CubicSplineTimecourseDataSet::OptimiseHyperparameters(const vector<double>& yValues, double& noiseFreeScale, double& noiseSigma)
+   ! If this method needs optimising, then you could get it to use
+   ! the DFPMaximise() function in TimecourseDataSet. See the
+   ! SquaredExponentialTimecourseDataSet class for an example of how.
+---------------------------------------------------------------------- */
+ 
+void CubicSplineTimecourseDataSet::
+OptimiseHyperparameters(const vector<double>& yValues,
+			double& noiseFreeScale,
+			double& noiseSigma)
 {
   //DECLARATIONS
   int i;
@@ -176,20 +195,19 @@ void CubicSplineTimecourseDataSet::OptimiseHyperparameters(const vector<double>&
     }
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-// TO DO: write description and optimise?
 double CubicSplineTimecourseDataSet::GetMLIINoise(const vector<int>& itemIndex)
 {
-  //DECLARATIONS
+  // Declarations
   int i, j;
   int index, counter=0;
   int nCurrentItems=itemIndex.size();
   vector<double> extractedData, yValues;
   double fittedNoise;
-  
-  //EXTRACT THE DATA POINTS FOR THIS CURRENT CLUSTER
-  //data vector is nDataItems*nTimePoints
+
+  // Extract the data points for this current cluster;
+  // data vector is nDataItems*nTimePoints in size
   for (i=0; i<nCurrentItems; i++)
   {
     for (j=0; j<nTimePoints; j++)
@@ -198,8 +216,9 @@ double CubicSplineTimecourseDataSet::GetMLIINoise(const vector<int>& itemIndex)
       extractedData.push_back(data[index][j]);//store the corresponding data value
     }
   }
-  
-  //RE-CONSTRUCT THE DATA VECTOR SO IT HAS THE CORRECT ORDERING FOR THE BlockCovarianceMatrix FORM WE'LL BE USING
+
+  // Re-construct the data vector so it has the correct ordering for
+  // the BlockCovarianceMatrix form we'll be using
   yValues = extractedData;
   counter = 0;
   for (i=0; i<nCurrentItems; i++)
@@ -217,10 +236,10 @@ double CubicSplineTimecourseDataSet::GetMLIINoise(const vector<int>& itemIndex)
   return fittedNoise;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-// TO DO: write description and optimise
-double CubicSplineTimecourseDataSet::CalculateFittedNoiseHyperparameter(const vector<double>& yValues)
+double CubicSplineTimecourseDataSet::
+CalculateFittedNoiseHyperparameter(const vector<double>& yValues)
 {
   //DECLARATIONS
   int i;
@@ -269,9 +288,8 @@ double CubicSplineTimecourseDataSet::CalculateFittedNoiseHyperparameter(const ve
   return(noiseSigma);
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-// TO DO: write description and optimise
 void CubicSplineTimecourseDataSet::OptimiseHyperparametersEstimatedNoise(const vector<double>& yValues, double& noiseFreeScale, double& noiseSigma, double replicateNoise)
 {
   //DECLARATIONS
@@ -333,9 +351,8 @@ void CubicSplineTimecourseDataSet::OptimiseHyperparametersEstimatedNoise(const v
   }
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-// TO DO: write description and optimise
 void CubicSplineTimecourseDataSet::OptimiseHyperparametersFixedNoise(const vector<double>& yValues, double& noiseFreeScale, double& noiseSigma)
 {
   //DECLARATIONS
@@ -372,28 +389,31 @@ void CubicSplineTimecourseDataSet::OptimiseHyperparametersFixedNoise(const vecto
   }
 }
 
+/* ---------------------------------------------------------------------- 
+   Compute a noise-less square exponential (SE) covariance function
+   changes for cubic spline.
+---------------------------------------------------------------------- */
 
-// COMPUTE A NOISE-LESS SQUARE EXPONENTIAL (SE) COVARIANCE FUNCTION
-// changes for cubic spline
-BlockCovarianceMatrix CubicSplineTimecourseDataSet::CubicSplineCovarianceFunction(int blockSize, double noiseFreeScale)
+BlockCovarianceMatrix CubicSplineTimecourseDataSet::
+CubicSplineCovarianceFunction(int blockSize, double noiseFreeScale)
 {
-  //DECLARATIONS
+  // Declarations
   int i, j;
   double covarElement, mintimePoint, partcovarElement;
   BlockCovarianceMatrix  blockMatrix;
-  
-  //INITIALISE THE BLOCK MATRIX
+
+  // Initialise the block matrix
   blockMatrix.nRank = nTimePoints;
   blockMatrix.blockSize = blockSize;
-  
-  //INITIALISE THE COVARIANCE FUNCTION (do this so we can assign to 2 elements each time)
+
+  // Initialise the covariance function
   for (i=0; i<nTimePoints; i++)
   {
     blockMatrix.noiseFreeCoeff.push_back(vector<double>(nTimePoints, 0));
     blockMatrix.noisyCoeff.push_back(0);
   }
   
-  //COMPUTE EACH ELEMENT OF THE COVARIANCE FUNCTION
+  // Compute each element of the covariance function
   for (i=0; i<nTimePoints; i++)
   {
     for (j=i; j<nTimePoints; j++)
@@ -409,14 +429,16 @@ BlockCovarianceMatrix CubicSplineTimecourseDataSet::CubicSplineCovarianceFunctio
       covarElement += partcovarElement;
       covarElement *= noiseFreeScale;
       
-      //and store in 2 elements (covariance is symmetric)
-      //this duplicates effort for i==j; not a big deal, computationally :-)
+      // and store in 2 elements (covariance is symmetric)
+      // this duplicates effort for i==j; not a big deal, computationally :-)
       blockMatrix.noiseFreeCoeff[i][j] = covarElement;
       blockMatrix.noiseFreeCoeff[j][i] = covarElement;
     }
   }
   return blockMatrix;
 }
+
+/* ---------------------------------------------------------------------- */
 
 double CubicSplineTimecourseDataSet::
 ComputeLogEvidenceFromHyperparameters(const vector<double>& yValues,
@@ -429,7 +451,7 @@ ComputeLogEvidenceFromHyperparameters(const vector<double>& yValues,
   return ComputeLogEvidence(covarFunction, yValues);
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 // params[0] = noiseFreeScale, params[1] = noiseSigma
 void CubicSplineTimecourseDataSet::
@@ -454,6 +476,7 @@ ComputeGradientsFromHyperparameters(const vector<double>& yValues,
   grad[1] = ComputeNoiseGradient(covarFunction, alpha, params[1]);
 }
 
+/* ---------------------------------------------------------------------- */
 
 void CubicSplineTimecourseDataSet::
 ComputeLogEvidenceAndGradientsFromHyperparameters(const vector<double>& yValues,
@@ -481,6 +504,9 @@ ComputeLogEvidenceAndGradientsFromHyperparameters(const vector<double>& yValues,
   grad[1] = ComputeNoiseGradient(covarFunction, alpha, params[1]);
 }
 
+/* ---------------------------------------------------------------------- */
 
 void CubicSplineTimecourseDataSet::
-ImposeConstraintsOnHyperparameters(vector<double>& params){}
+ImposeConstraintsOnHyperparameters(vector<double>& params) {}
+
+/* ---------------------------------------------------------------------- */

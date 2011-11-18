@@ -1,12 +1,33 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include "multinomial_header.h"
-//Routine to calculate the alpha hyperparameters for the BHC clustering.
 
-//Katherine Heller's BHC code calcualte hyperparameters as being proportional to the population mean proportion of each featuer value
-//this is then scaled by the global hyperparameter (cc in her code; here??)
-//we want to set this global hyperparameter using Evidence optimisation...
-//(by-hand for now.  Automatic at a later date...)
+/* ----------------------------------------------------------------------
+   Routine to calculate the alpha hyperparameters for the BHC clustering.
 
-double** CalculateHyperparameters(NODE* tr_node, int dim, int obs, int nFeatureValues, double cc){
+   Katherine Heller's BHC code calculates hyperparameters as being
+   proportional to the population mean proportion of each feature value
+   this is then scaled by the global hyperparameter (cc in her code)
+   we want to set this global hyperparameter using evidence optimisation
+   (by hand for now; automatic at a later date)
+------------------------------------------------------------------------- */
+
+double** CalculateHyperparameters(NODE* tr_node,
+				  int dim,
+				  int obs,
+				  int nFeatureValues,
+				  double cc)
+{
   //----------------------------------------------------------------------
   // DECLARATIONS --------------------------------------------------------
   //----------------------------------------------------------------------
@@ -49,9 +70,3 @@ double** CalculateHyperparameters(NODE* tr_node, int dim, int obs, int nFeatureV
   //----------------------------------------------------------------------
   return hyperParameters;
 }
-//*****************************************************************************
-//*****************************************************************************
-//----------------------------------------------------------------------
-// ----------------------------------------
-//----------------------------------------------------------------------
-

@@ -1,5 +1,5 @@
 #
-bhc <- function(data, itemLabels=NULL, nFeatureValues=0, timePoints=NULL, dataType="multinomial", noise=NULL, numReps=0, noiseMode=0, robust=0, numThreads=1, verbose=FALSE){
+bhc <- function(data, itemLabels=NULL, nFeatureValues=0, timePoints=NULL, dataType="multinomial", noise=NULL, numReps=0, noiseMode=0, robust=0, numThreads=1, randomised=FALSE, m=2, verbose=FALSE){
   ##----------------------------------------------------------------------
   ## OPTIONALLY, PRINT USEFUL INFORMATION TO SCREEN ----------------------
   ##----------------------------------------------------------------------
@@ -32,6 +32,7 @@ bhc <- function(data, itemLabels=NULL, nFeatureValues=0, timePoints=NULL, dataTy
   nLabels    <- length(itemLabels)
   if (nLabels!=nDataItems)
     stop(paste("Error!  There are", nLabels, "labels, but", nDataItems, "data items."))
+  if(m<2) m=2
   ##-----------------------------------------------------------------------
   ## MULTINOMIAL:  NORMALISE DATA; FIND NUMBER OF DISCRETE FEATURE VALUES -
   ##-----------------------------------------------------------------------
@@ -55,7 +56,7 @@ bhc <- function(data, itemLabels=NULL, nFeatureValues=0, timePoints=NULL, dataTy
   out              <- RunBhcWrapper(globalHyperParam, dataTypeID, data, timePoints,
                                     nDataItems, nFeatures, nFeatureValues, noise,
                                     numReps, noiseMode, robust, fullOutputSwitch=TRUE,
-                                    numThreads=numThreads,verbose=verbose)  
+                                    numThreads, randomised, m, verbose)
   outputDendrogram <- ConstructDendrogramObject(out, nDataItems, nFeatures, itemLabels)
   ##----------------------------------------------------------------------
   ## PRINT THE LogEvidence TO SCREEN -------------------------------------

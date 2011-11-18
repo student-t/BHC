@@ -1,22 +1,31 @@
-//Need this code to make sure we only use this once during compilation
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #ifndef CUBICSPLINETIMECOURSEDATASET_H
 #define CUBICSPLINETIMECOURSEDATASET_H
+
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "TimecourseDataSet.h"
 #include "BlockCovarianceMatrix.h"
 
-//  This class inherits the superclass TimecourseDataSet.
 class CubicSplineTimecourseDataSet : public TimecourseDataSet
 {
-public:
-  //CONSTRUCTORS
+ public:
   CubicSplineTimecourseDataSet();
   CubicSplineTimecourseDataSet(string dataFile);
   CubicSplineTimecourseDataSet(const vector<vector<double> >& inputData);
-
-  //OTHER METHODS
   double GetMLIINoise(const vector<int>& itemIndex);
   double SingleClusterLogEvidence(const vector<int>& itemIndex,
 				double& lengthScale,
@@ -24,8 +33,7 @@ public:
 				double& noiseSigma,
 				double& mixtureComponent);
   
-protected:
-  //METHODS
+ protected:
   double ComputeMaximisedLogEvidence(const vector<double>& yValues,
 				   double& noiseFreeScale,
 				   double& noiseSigma);
@@ -42,11 +50,9 @@ protected:
 					     double replicateNoise );
   BlockCovarianceMatrix CubicSplineCovarianceFunction(int blockSize,
 						      double noiseFreeScale);
-
   double ComputeLogEvidenceFromHyperparameters(const vector<double>& yValues,
 					     const int blockSize,
 					     const vector<double>& params);
-  
   void ComputeGradientsFromHyperparameters(const vector<double>& yValues,
 					   const int blockSize,
 					   const vector<double>& params,
@@ -57,8 +63,6 @@ protected:
 						      const vector<double>& params,
 						      double& logEv,
 						      vector<double>& grad);
-
   void ImposeConstraintsOnHyperparameters(vector<double>& params);
-
 };
 #endif

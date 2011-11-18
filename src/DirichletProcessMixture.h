@@ -11,9 +11,25 @@ class DirichletProcessMixture
 {
  public:
   DirichletProcessMixture();
-  vector<Node> GreedyClustering(DataSet* dataSet, bool verbose=false);
+  vector<Node> GreedyClustering(DataSet& dataSet,
+				const bool verbose=false);
+  vector<Node> RandomisedClustering(DataSet& dataSet,
+				    const int m,
+				    const int t,
+				    const bool verbose);
   
  private:
-  vector<int> FindMostLikelyMerger(vector<Node>& treeNode);
+  void RandomisedClustering(vector<Node>& D_sub,
+			    vector<Node>& D,
+			    DataSet& dataSet,
+			    const int m,
+			    const int t,
+			    int& depth,
+			    const bool verbose);
+  void GreedyClustering(vector<Node>& treeNode,
+			DataSet& dataSet,
+			const bool verbose);
+  vector<int> FindMostLikelyMerger(const vector<Node>& treeNode);
 };
+
 #endif // DIRICHLETPROCESSMIXTURE_H

@@ -1,34 +1,43 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include "TimecourseDataSet.h"
 #include "BlockCovarianceMatrix.h"
 #include <limits>
 #include <numeric>
 
+/* ---------------------------------------------------------------------- */
 
-//CONSTRUCTOR
 TimecourseDataSet::TimecourseDataSet()
 {}
 
+/* ---------------------------------------------------------------------- */
 
-
-//CONSTRUCTOR - READ IN DATA FROM FILE
 TimecourseDataSet::TimecourseDataSet(string dataFile)
 {
-  //READ IN THE DATA FROM FILE
   ReadInData(dataFile);
 }
 
+/* ----------------------------------------------------------------------
+   Constructor: read in data from input vector; need this in order
+   to link to R.
+---------------------------------------------------------------------- */
 
-
-//CONSTRUCTOR - READ IN DATA FROM INPUT VECTOR
-//need this in order to link to R
 TimecourseDataSet::TimecourseDataSet(const vector<vector<double> >& inputData)
 {
-  //DECLARATIONS
   int i;
   
   //COPY THE DATA INTO THE OBJECT
   data = inputData;
-
   cout << "Need to deal with the time points here test!" << endl;
 
   //FIND THE DATA SIZE
@@ -48,9 +57,8 @@ TimecourseDataSet::TimecourseDataSet(const vector<vector<double> >& inputData)
   ///cout << "----------" << endl;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//READ DATA IN FROM A FILE
 void TimecourseDataSet::ReadInData(string dataFile)
 {
   //DECLARATIONS
@@ -105,12 +113,12 @@ void TimecourseDataSet::ReadInData(string dataFile)
   //cout << "----------" << endl;
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 void TimecourseDataSet::ReadInTimePoints(vector<double> timePoints_copy)
 {
   //DECLARATIONS
-  int	i;
+  int i;
   
   for (i=0; i<nTimePoints; i++)
   {
@@ -118,9 +126,8 @@ void TimecourseDataSet::ReadInTimePoints(vector<double> timePoints_copy)
   }
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//READ DATA IN FROM A FILE
 void TimecourseDataSet::ReadInNoise(string dataFile)
 {
   //DECLARATIONS
@@ -144,15 +151,14 @@ void TimecourseDataSet::ReadInNoise(string dataFile)
   file.close();
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//READ DATA IN FROM A FILE WHEN RUNNING FROM R
 void TimecourseDataSet::ReadInNoise(vector<double> noise_copy)
 {
   noiseData = noise_copy;
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 void TimecourseDataSet::SetNoiseMode(int mode)
 {
@@ -160,7 +166,7 @@ void TimecourseDataSet::SetNoiseMode(int mode)
   ///cout << "Noise mode = " << noise_mode << endl;
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 void TimecourseDataSet::SetReps(int num_reps)
 {
@@ -168,7 +174,7 @@ void TimecourseDataSet::SetReps(int num_reps)
   ///cout << "Num reps = " << reps << endl;
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 void TimecourseDataSet::SetDataType(string type)
 {
@@ -176,9 +182,9 @@ void TimecourseDataSet::SetDataType(string type)
   ///cout << "dataType:" << dataType << endl;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-void TimecourseDataSet::SetRobustMode(int mode)  //also sets the dataRange if Robust = 1
+void TimecourseDataSet::SetRobustMode(int mode) // also sets the dataRange if Robust = 1
 {
   //DECLARATIONS
   int i, j;
@@ -206,7 +212,7 @@ void TimecourseDataSet::SetRobustMode(int mode)  //also sets the dataRange if Ro
   }
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 double TimecourseDataSet::GetClusterNoise(int nodeID)
 {
@@ -232,27 +238,7 @@ double TimecourseDataSet::GetClusterNoise(int nodeID)
     }
 }
 
-
-
-//double TimecourseDataSet::GetMergedClusterNoise(double node1Noise, double node2Noise){
-//	double newnoise;	// New calculated noise
-
-//	if (noise_mode == 0){
-//cout << "GMCN: " << 0 << endl;
-//		return 0;
-//	}
-//	else if (noise_mode == 1){
-//cout << "GMCN: Fixed = " << noiseData[0] << endl;
-//		return noiseData[0];
-//	}
-//	else if (noise_mode == 2){
-//		newnoise = pow((95.0/191.0)*(pow(node1Noise,2) + pow(node2Noise, 2)),0.5); //the constant is not always e.g. 95/191
-//cout << "GMCN: Propagating = " << newnoise << endl;
-//		return newnoise;
-//	}
-//}
-
-
+/* ---------------------------------------------------------------------- */
 
 double TimecourseDataSet::GetMergedClusterNoise(vector<int> mergedclusterindex)
 {
@@ -280,9 +266,11 @@ double TimecourseDataSet::GetMergedClusterNoise(vector<int> mergedclusterindex)
     }
 }
 
+/* ----------------------------------------------------------------------
+   Standard deviation of all residuals in a cluster.
+---------------------------------------------------------------------- */
 
-
-double TimecourseDataSet::GetClusterSE(vector<int> itemIndex)  //standard deviation of all residuals in a cluster
+double TimecourseDataSet::GetClusterSE(vector<int> itemIndex)
 {
   //DECLARATIONS
   unsigned int ui;
@@ -332,9 +320,10 @@ double TimecourseDataSet::GetClusterSE(vector<int> itemIndex)  //standard deviat
   return clusterSE;
 }
 
+/* ----------------------------------------------------------------------
+   SEMS - standard error of the mean squared.
+---------------------------------------------------------------------- */
 
-
-//SEMS Standard Error of the Mean Squared
 double TimecourseDataSet::GetClusterSEMS(vector<int> itemIndex)
 {
   unsigned int i;
@@ -358,7 +347,7 @@ double TimecourseDataSet::GetClusterSEMS(vector<int> itemIndex)
   return clusterSEMS;
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 vector<double> TimecourseDataSet::GetDataForCluster(vector<int> itemIndex)
 {
@@ -395,101 +384,10 @@ vector<double> TimecourseDataSet::GetDataForCluster(vector<int> itemIndex)
   return yValues;
 }
 
+/* ----------------------------------------------------------------------
+   Method to compute the determinant of a covariance function matrix.
+---------------------------------------------------------------------- */
 
-
-/*
-double TimecourseDataSet::GetMLIINoise(vector<int> itemIndex){
-  //DECLARATIONS
-  int                      i, j;
-  int                      index, counter=0;
-  int                      nCurrentItems=itemIndex.size();
-  vector<double>           extractedData, yValues;
-  double				   fittedNoise;
-  //EXTRACT THE DATA POINTS FOR THIS CURRENT CLUSTER
-  //data vector is nDataItems*nTimePoints
-  for (i=0; i<nCurrentItems; i++){
-    for (j=0; j<nTimePoints; j++){
-      index = itemIndex[i];
-      extractedData.push_back(data[index][j]);//store the corresponding data value
-    }
-  }
-  //RE-CONSTRUCT THE DATA VECTOR SO IT HAS THE CORRECT ORDERING FOR THE BlockCovarianceMatrix FORM WE'LL BE USING
-  yValues = extractedData;
-  counter = 0;
-  for (i=0; i<nCurrentItems; i++){
-    for (j=0; j<nTimePoints; j++){
-      index          = j*nCurrentItems + i;
-      yValues[index] = extractedData[counter];
-      counter++;
-    }
-  }
-  //Optimise the hyperparameters and return the fitted noise
-  fittedNoise = CalculateFittedNoiseHyperparameter(yValues);
-  return(fittedNoise);
-}
-*/
-
-
-
-//METHOD TO COMPUTE THE ROBUST LOGEVIDENCE MISSING OUT A TIMEPOINT EACH TIME
-/*
-double TimecourseDataSet::ComputeRobustLogEvidence(vector<double> extractedData, vector<double> yValues, int nCurrentItems, double* p_lengthScale, double* p_NoiseFree, double* p_Noise){
-	//DECLARATIONS
-	int		k,i,j, index, counter;
-	double  lft, lst, cft, cst, denom, diff, a, b, B, logEvidence, min, max;
-	long double ft, evidence, pst, sst;
-	vector<double>	yValuesCopy;
-	vector<double>::iterator itmin, itmax;
-	BlockCovarianceMatrix    covarFunction;
-	//INITIALISE
-	b = 0.01; //prob a value is an outlier
-	a = 1-b; //prob a value is a regular value
-	//B = 0.83; //the constant value of the outlier PDF, imagine stdev is 3 times greater for outlier, 1/0.4*3=0.83
-	sst = 0;
-	//if (nCurrentItems = 1){ //could still miss out a timepoint for single genes
-	//	return ComputeMaximisedLogEvidence(yValues, p_lengthScale, p_NoiseFree, p_Noise);
-	//}
-	//Set B as 1/range data
-	itmin = min_element( yValues.begin(), yValues.end() );
-	itmax = max_element( yValues.begin(), yValues.end() );
-	min = *itmin;
-	max = *itmax;
-	diff = max-min;
-	B = 1.0/diff;
-	//cout << "min:" << min << "max" << max << "B:" << B << endl;
-	//COMPUTE FIRST TERM
-	lft = ComputeMaximisedLogEvidence(yValues, p_lengthScale, p_NoiseFree, p_Noise);
-	ft = exp((long double)lft);
-	//COMPUTE SECOND TERM
-	//miss out a timepoint each time
-	for (k=0; k<nTimePoints;k++){
-		yValuesCopy = yValues;
-		for (i=nTimePoints*(nCurrentItems-1) + k; i >=  0; i=i-nTimePoints){
-			yValuesCopy.erase (yValuesCopy.begin()+i);
-		}
-		covarFunction = SquareExponentialCovarianceFunctionMissOneTimePoint(*p_lengthScale, nCurrentItems, *p_NoiseFree, k); //misses out timepoint k
-		covarFunction = AddNoiseToCovarianceFunction(covarFunction, *p_Noise);
-		lst = ComputeLogEvidence(covarFunction, yValuesCopy);
-		pst = exp((long double)lst);
-		sst += pst;
-	}
-	//ADD TERMS AND TAKE LOG
-	cft = pow(a, nCurrentItems);
-	cst = pow(a, (nCurrentItems-1));
-	cst *=pow(b, 1);
-	//denom = cft+cst;
-	//cst /= denom;
-	//cft /= denom;
-	cst *= B;
-	evidence = cft*ft + cst*sst;
-	logEvidence = log(evidence);
-	return(logEvidence);
-}
-*/
-
-
-
-//METHOD TO COMPUTE THE DETERMINANT OF A COVARIANCE FUNCTION MATRIX
 double TimecourseDataSet::ComputeLogDeterminant(double* choleskyMatrix, int nVariables)
 {
   //DECLARATIONS
@@ -503,32 +401,26 @@ double TimecourseDataSet::ComputeLogDeterminant(double* choleskyMatrix, int nVar
   return(logDeterminant);
 }
 
+/* ----------------------------------------------------------------------
+   Compute the log-evidence for a GP model, given a covariance function
+   and data. Currently we're computing two LU decompositions; can
+   we pre-compute it?
+---------------------------------------------------------------------- */
 
-
-// COMPUTE THE LOG-EVIDENCE FOR A GP MODEL, GIVEN A COVARIANCE FUNCTION AND DATA
-//currently, we're computing two LU decompositions :-(
-//can we pre-compute it, and therefore speed up the det and inv functions??
-double TimecourseDataSet::ComputeLogEvidence(BlockCovarianceMatrix blockMatrix, vector<double> data)
+double TimecourseDataSet::ComputeLogEvidence(BlockCovarianceMatrix blockMatrix,
+					     vector<double> data)
 {
   //DECLARATIONS
   double logEvidence;
-  const double PI=4.0*atan(1.0); // ugly
-  //CONSTRUCT THE LOG-EVIDENCE USING THE BlockMatrix CLASS
-  //cout << "blockMatrix.noiseFreeCoeff[0]:" << blockMatrix.noiseFreeCoeff[0][0] << " " << blockMatrix.noiseFreeCoeff[0][1]<< " " << blockMatrix.noiseFreeCoeff[0][2] << " " << blockMatrix.noiseFreeCoeff[0][3] << endl;
-  //cout << "blockMatrix.noiseFreeCoeff[1]:" << blockMatrix.noiseFreeCoeff[1][0] << " " << blockMatrix.noiseFreeCoeff[1][1]<< " " << blockMatrix.noiseFreeCoeff[1][2] << " " << blockMatrix.noiseFreeCoeff[1][3]<< endl;
-  //cout << "blockMatrix.noiseFreeCoeff[2]:" << blockMatrix.noiseFreeCoeff[2][0] << " " << blockMatrix.noiseFreeCoeff[2][1]<< " " << blockMatrix.noiseFreeCoeff[2][2] << " " << blockMatrix.noiseFreeCoeff[2][3]<< endl;
-  //cout << "blockMatrix.noiseFreeCoeff[3]:" << blockMatrix.noiseFreeCoeff[3][0] << " " << blockMatrix.noiseFreeCoeff[3][1]<< " " << blockMatrix.noiseFreeCoeff[3][2] << " " << blockMatrix.noiseFreeCoeff[3][3]<< endl;
-  //cout << "blockMatrix.noisyCoeff:" << blockMatrix.noisyCoeff[0] << " " << blockMatrix.noisyCoeff[1] << " " << blockMatrix.noisyCoeff[2] << " " << blockMatrix.noisyCoeff[3] << endl;
+  const double PI=3.14159265358979324;
 
   logEvidence  = -0.5 * blockMatrix.ComputeMatrixDeterminant();
-  //cout << "part1:" << logEvidence << endl;
   logEvidence -= 0.5 * nTimePoints * blockMatrix.blockSize * log(2*PI);
-  //cout << "part2:" << -0.5 * nTimePoints * blockMatrix.blockSize * log(2*PI) << endl;
+
   //invert the BlockMatrix
   blockMatrix.InvertMatrix();
   //compute the likelihood term
   logEvidence -= 0.5*blockMatrix.ComputeLogLikelihoodProduct(data);
-  //cout << "part3:" << -0.5*blockMatrix.ComputeLogLikelihoodProduct(data) << endl;
 
   //IT MIGHT BE SENSIBLE TO FORBID logEv=inf HERE (RESULT OF A SINGULAR MATRIX)
   //ARE THERE ANY DANGERS TO DOING THIS??
@@ -538,25 +430,26 @@ double TimecourseDataSet::ComputeLogEvidence(BlockCovarianceMatrix blockMatrix, 
   return(logEvidence);
 }
 
+/* ----------------------------------------------------------------------
+   Compute the part of the log-evidence for a robust case with a single
+   missing observation from yValues.
+---------------------------------------------------------------------- */
 
-
-// COMPUTE THE PART OF THE LOG-EVIDENCE FOR A ROBUST CASE WITH A SINGLE MISSING OBS FROM Y VALUES
-double TimecourseDataSet::ComputePartRobustLogEvidenceMissingSingleObservation(double logDetCovarFunctionk, BlockCovarianceMatrix invblockMatrix, vector<double> yValsMissingSingleObservation)
+double TimecourseDataSet::
+ComputePartRobustLogEvidenceMissingSingleObservation(double logDetCovarFunctionk,
+						     BlockCovarianceMatrix invblockMatrix,
+						     vector<double> yValsMissingSingleObservation)
 {
   //DECLARATIONS
   double logEvidence;
   const double PI=4.0*atan(1.0);
   //CONSTRUCT THE LOG-EVIDENCE USING THE BlockMatrix CLASS
   logEvidence  = -0.5 * logDetCovarFunctionk;
-  //cout << "partdet:" << logEvidence << endl;
   logEvidence -= 0.5 * log(2*PI) * ((nTimePoints * invblockMatrix.blockSize)-1);
-  //cout << "partconst:" << -(0.5 * log(2*PI) * ((nTimePoints * invblockMatrix.blockSize)-1)) << endl;
+
   //compute the likelihood term
   logEvidence -= 0.5*invblockMatrix.ComputeLogLikelihoodProductMissingSingleObservation(yValsMissingSingleObservation);
-  //cout << "partinv:" << -0.5*invblockMatrix.ComputeLogLikelihoodProductMissingSingleObservation(yValsMissingSingleObservation);
-  //cout << "y.size:" << yValsMissingSingleObservation.size() << " " << yValsMissingSingleObservation[0] << " " << yValsMissingSingleObservation[1]<< " "  << yValsMissingSingleObservation[2]<< " "  << yValsMissingSingleObservation[3]<< " "  << yValsMissingSingleObservation[4];
-  //cout << "invMatrixk.noiseFreeCoeff:" << invblockMatrix.noiseFreeCoeff[0][0] << " " << invblockMatrix.noiseFreeCoeff[0][1] << " " << invblockMatrix.noiseFreeCoeff[1][0] << " " << invblockMatrix.noiseFreeCoeff[1][1];
-  //cout << "invMatrixk.noisyCoeff:" <<  invblockMatrix.noisyCoeff[0] << " " << invblockMatrix.noisyCoeff[1] << endl;
+
   //IT MIGHT BE SENSIBLE TO FORBID logEv=inf HERE (RESULT OF A SINGULAR MATRIX)
   //ARE THERE ANY DANGERS TO DOING THIS??
   //if (logEvidence==numeric_limits<double>::infinity())
@@ -565,37 +458,24 @@ double TimecourseDataSet::ComputePartRobustLogEvidenceMissingSingleObservation(d
   return(logEvidence);
 }
 
+/* ----------------------------------------------------------------------
+   Compute the partial derivative for a hyperparameter (given implicitly
+   in covarianceDerivative).
 
+   See page 114 of Rasmussen and Williams for the relevant equation.
+---------------------------------------------------------------------- */
 
-// OPTIMISE THE HYPERPARAMETERS FOR THE GP MODEL, RETURNING THE OPTIMAL LOG-EVIDENCE
-//xValues should contain the distinct time points (*not* duplicates)
-//This method uses a simple implementation of a gradient ascent method.
-//Hyperparameters are:
-//   - length-scale (of the SE covariance function)
-//   - the noiseFreeScale (ie. amplitude of the SE covariance function term)
-//   - noiseSigma
-//
-
-
-//double TimecourseDataSet::CalculateFittedNoiseHyperparameter(vector<double> yValues){
-// cout << "CFNHP: This method should be replaced by one for the subclass being used" << endl;
-// }
-
-
-
-// Compute the partial derivative for a hyperparameter (which is given
-// implicitly in covarianceDerivative).
-//
-// See page 114 of Rasmussen and Williams.
-double TimecourseDataSet::ComputeGradient(const BlockCovarianceMatrix& inverseCovarianceFunction, const BlockCovarianceMatrix& covarianceDerivative, const vector<double>& alpha)
+double TimecourseDataSet::
+ComputeGradient(const BlockCovarianceMatrix& inverseCovarianceFunction,
+		const BlockCovarianceMatrix& covarianceDerivative,
+		const vector<double>& alpha)
 {
-  // I have found that using GetRow(), as below, is the quickest
-  // way of doing this job, since explicitly building the rows whilst
-  // performing the below operation cannot make use of the STL (whereas
-  // GetRow() can).
-  
-  //DECLARATIONS
-  unsigned int k;
+  // At first glance, it would appear to be quicker to explicitly build the
+  // rows as you go along; but doing it this way cannot exploit the STL
+  // and so it turns out quicker to just use GetRow() as below - R.D.
+
+  // Declarations
+  size_t k;
   int j;
   double gradient=0.0;
   const int alpha_size=alpha.size();
@@ -606,13 +486,13 @@ double TimecourseDataSet::ComputeGradient(const BlockCovarianceMatrix& inverseCo
   vector<double>::const_iterator inIt1, inIt2, ub;
   vector<double>::iterator vecIt1, vecIt2, outItEnd1, outItEnd2;
   
-  //COMPUTE THE GRADIENT
+  // Compute the gradient
   block_j1_counter = block_j2_counter = block_j1 = block_j2 = 0;
   for (j=0; j<alpha_size; j++)
   {
     //vec1 = inverseCovarianceFunction.GetRow(j);
     //vec2 = covarianceDerivative.GetRow(j);
-    // ^ we merge these two operations into one (quite convoluted):
+    // ^ we merge these two operations into one (convoluted but quick):
     ///////////////////////////////////////////////////////////////////////
     inIt1 = inverseCovarianceFunction.noiseFreeCoeff[block_j1].begin();
     vecIt1 = vec1.begin();
@@ -630,9 +510,9 @@ double TimecourseDataSet::ComputeGradient(const BlockCovarianceMatrix& inverseCo
       }
     vec1[j] *= 1.0 + inverseCovarianceFunction.noisyCoeff[block_j1];
     vec2[j] *= 1.0 + covarianceDerivative.noisyCoeff[block_j2];
-    // Book-keeping to avoid the following divisions:
-    //  block_j1 = j / inverseCovarianceFunction.blockSize
-    //  block_j2 = j / covarianceDerivative.blockSize
+    // block_j1 = j / inverseCovarianceFunction.blockSize
+    // block_j2 = j / covarianceDerivative.blockSize
+    // ^ we can do this without doing the expensive divisions:
     if(++block_j1_counter==inverseCovarianceFunction.blockSize)
       {
 	block_j1_counter=0; ++block_j1;
@@ -658,12 +538,12 @@ double TimecourseDataSet::ComputeGradient(const BlockCovarianceMatrix& inverseCo
   return gradient * 0.5;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//COMPUTE THE PARTIAL GRADIENT FOR A GIVEN HYPERPARAMETER
-// This function is pretty negligible at the moment, but might
-// benefit later from using the STL.
-double TimecourseDataSet::ComputeNoiseGradient(const BlockCovarianceMatrix& inverseCovarianceFunction, const vector<double>& alpha, double noiseSigma)
+double TimecourseDataSet::
+ComputeNoiseGradient(const BlockCovarianceMatrix& inverseCovarianceFunction,
+		     const vector<double>& alpha,
+		     double noiseSigma)
 {
   //DECLARATIONS
   unsigned int i;
@@ -680,10 +560,10 @@ double TimecourseDataSet::ComputeNoiseGradient(const BlockCovarianceMatrix& inve
   return gradient * 0.5;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//COMPUTE THE PARTIAL GRADIENT FOR A GIVEN HYPERPARAMETER
-double TimecourseDataSet::ComputeNoiseGradientIncludingGammaHyperprior(BlockCovarianceMatrix inverseCovarianceFunction, vector<double> alpha, double noiseSigma, vector<double> gammaParams)
+double TimecourseDataSet::
+ComputeNoiseGradientIncludingGammaHyperprior(BlockCovarianceMatrix inverseCovarianceFunction, vector<double> alpha, double noiseSigma, vector<double> gammaParams)
 {
   //DECLARATIONS
   unsigned int i;
@@ -704,45 +584,59 @@ double TimecourseDataSet::ComputeNoiseGradientIncludingGammaHyperprior(BlockCova
   return(gradient);
 }
 
+/* ----------------------------------------------------------------------
+   Add Gaussian white noise to the input covariance function.
+---------------------------------------------------------------------- */
 
-
-//ADD GAUSSIAN WHITE NOISE TO THE INPUT COVARIANCE FUNCTION
-BlockCovarianceMatrix TimecourseDataSet::AddNoiseToCovarianceFunction(BlockCovarianceMatrix blockMatrix, double noiseSigma)
+BlockCovarianceMatrix TimecourseDataSet::
+AddNoiseToCovarianceFunction(BlockCovarianceMatrix blockMatrix, double noiseSigma)
 {
-  //DECLARATIONS
+  // Declarations
   int i;
   double sigmaSquared;
-  //ADD SIGMA^2 (VARIANCE) TO THE DIAGONAL ELEMENTS
+  
+  // Add sigma^2 (variange) to the diagonal elements
   sigmaSquared           = pow(noiseSigma, 2);
   for (i=0; i<blockMatrix.nRank; i++)
-    //cout << "nRank" << blockMatrix.nRank << endl; why does this break it??
-    blockMatrix.noisyCoeff[i] = sigmaSquared / blockMatrix.noiseFreeCoeff[i][i];//normalisation because of the way we construct a block matrix
-  //RETURN THE NOISY COVARIANCE FUNCTION
+    // normalisation because of the way we construct a block matrix
+    blockMatrix.noisyCoeff[i] = sigmaSquared / blockMatrix.noiseFreeCoeff[i][i];
+
   return(blockMatrix);
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//ADD GAUSSIAN WHITE NOISE TO THE INPUT COVARIANCE FUNCTION
-BlockCovarianceMatrix TimecourseDataSet::AddFixedNoiseToCovarianceFunction(BlockCovarianceMatrix blockMatrix, double noise_std_error)
+BlockCovarianceMatrix TimecourseDataSet::
+AddFixedNoiseToCovarianceFunction(BlockCovarianceMatrix blockMatrix,
+				  double noise_std_error)
 {
-  //DECLARATIONS
+  // Declarations
   int i;
   double sigmaSquared;
-  //ADD SIGMA^2 (VARIANCE) TO THE DIAGONAL ELEMENTS
+
+  // Add sigma^2 (variance) to the diagonal elements
   sigmaSquared           = pow(noise_std_error, 2);
   for (i=0; i<blockMatrix.nRank; i++)
-    //cout << "nRank" << blockMatrix.nRank << endl; why does this break it??
-    blockMatrix.noisyCoeff[i] = sigmaSquared / blockMatrix.noiseFreeCoeff[i][i];//normalisation because of the way we construct a block matrix
-  //RETURN THE NOISY COVARIANCE FUNCTION
+    //normalisation because of the way we construct a block matrix
+    blockMatrix.noisyCoeff[i] = sigmaSquared / blockMatrix.noiseFreeCoeff[i][i];
+  
   return(blockMatrix);
 }
 
+/* ----------------------------------------------------------------------
+   Compute a square exponential (SE) covariance function for a K matrix
+   missing an observation at time k from the full K matrix.
+   This has same values as the full K matrix for: noisyCoeff, noiseFreeCoeff,
+   blockSize, nRank; except the timePoint corresponding to missing obs
+   comes first, other timePoints are in order.
+---------------------------------------------------------------------- */
 
-
-// COMPUTE A SQUARE EXPONENTIAL (SE) COVARIANCE FUNCTION FOR A K MATRIX MISSING OBSERVATION AT TIME k, FROM FULL K MATRIX
-// THIS HAS SAME VALUES AS THE FULL K MATRIX FOR: NOISYCOEFF NOISEFREECOEFF, BLOCKSIZE, NRANK; EXCEPT THE TIMEPOINT CORRES. TO MISSING OBS COMES FIRST, OTHER TIMEPOINTS ARE IN ORDER
-BlockCovarianceMatrix TimecourseDataSet::CovarianceFunctionMissingSingleObservation(vector< vector<double> > KnFC, vector <double> KnC, int KblockSize, int KnRank, int timePoint)
+BlockCovarianceMatrix TimecourseDataSet::
+CovarianceFunctionMissingSingleObservation(vector<vector<double> >KnFC,
+					   vector <double> KnC,
+					   int KblockSize,
+					   int KnRank, 
+					   int timePoint)
 {
   //DECLARATIONS
   unsigned int i;
@@ -776,11 +670,16 @@ BlockCovarianceMatrix TimecourseDataSet::CovarianceFunctionMissingSingleObservat
   return(blockMatrix);
 }
 
+/* ----------------------------------------------------------------------
+   Compute the partial derivative w.r.t. length-scale of a square
+   exponential (SE) covariance function. Note that we've hard-coded
+   noise=0 here (ugly).
+---------------------------------------------------------------------- */
 
-
-// COMPUTE THE PARTIAL DERIVATIVE WRT LENGTH-SCALE OF A SQUARE EXPONENTIAL (SE) COVARIANCE FUNCTION
-//NOTE THAT WE'VE HARD-WIRED NOISE=0 HERE (THIS IS A BIT UGLY)
-BlockCovarianceMatrix TimecourseDataSet::SquareExponential_lengthDerivative(double lengthScale, int blockSize, double noiseFreeScale)
+BlockCovarianceMatrix TimecourseDataSet::
+SquareExponential_lengthDerivative(double lengthScale,
+				   int blockSize,
+				   double noiseFreeScale)
 {
   //DECLARATIONS
   int                    i, j;
@@ -820,9 +719,11 @@ BlockCovarianceMatrix TimecourseDataSet::SquareExponential_lengthDerivative(doub
   return(blockMatrix);
 }
 
+/* ----------------------------------------------------------------------
+   Optimise the noise hyperparameter given the measurement error
+   (SEM calculated from replicates).
+---------------------------------------------------------------------- */
 
-
-//OPTIMISE THE NOISE HYPERPARAMETER GIVEN THE MEASUREMENT ERROR (SEM CALCULATED FROM REPLICATES)
 vector<double> TimecourseDataSet::OptimiseGammaParams(double clusterSEMS)
 {
   //DECLARATIONS
@@ -853,9 +754,11 @@ vector<double> TimecourseDataSet::OptimiseGammaParams(double clusterSEMS)
 
 }
 
+/* ----------------------------------------------------------------------
+  Get the alphap parameter for Gamma distribution, given the beta parameter
+  and sigmaSEM.
+---------------------------------------------------------------------- */
 
-
-//Get the alpha parameter for Gamma distribution, given the beta parameter and sigmaSEM
 double TimecourseDataSet::GetAlpha(double beta, double clusterSEMS)
 {
   //DECLARATIONS
@@ -870,9 +773,11 @@ double TimecourseDataSet::GetAlpha(double beta, double clusterSEMS)
   return(alpha);
 }
 
+/* ----------------------------------------------------------------------
+   Get the density for the Gamma Distribution at the input value, for params
+   alpha and beta.
+---------------------------------------------------------------------- */
 
-
-//Get the density for the Gamma Distribution at the input value, for params alpha and beta
 double TimecourseDataSet::GammaDistribution(double input, double alpha, double beta)
 {
   //DECLARATIONS
@@ -887,21 +792,30 @@ double TimecourseDataSet::GammaDistribution(double input, double alpha, double b
   return(gammadist);
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 int TimecourseDataSet::GetNoiseMode()
 {
   return(noise_mode);
 }
+
+/* ---------------------------------------------------------------------- */
+
 int TimecourseDataSet::GetRobustMode()
 {
   return(robust_mode);
 }
 
+/* ----------------------------------------------------------------------
+   Compute a noise-less square exponential (SE) covariance function
+   which misses all observation from one timepoint.
+---------------------------------------------------------------------- */
 
-
-// COMPUTE A NOISE-LESS SQUARE EXPONENTIAL (SE) COVARIANCE FUNCTION, WHICH MISSES ALL OBSERVATIONS FROM ONE TIMEPOINT
-BlockCovarianceMatrix TimecourseDataSet::SquareExponentialCovarianceFunctionMissOneTimePoint(double lengthScale, int blockSize, double noiseFreeScale, int timePoint)
+BlockCovarianceMatrix TimecourseDataSet::
+SquareExponentialCovarianceFunctionMissOneTimePoint(double lengthScale,
+						    int blockSize,
+						    double noiseFreeScale,
+						    int timePoint)
 {
   //DECLARATIONS
   int                    i, j, k, l; //i,j are timepoints and j,k are matrix positions
@@ -947,225 +861,11 @@ BlockCovarianceMatrix TimecourseDataSet::SquareExponentialCovarianceFunctionMiss
   return(blockMatrix);
 }
 
+/* ----------------------------------------------------------------------
+   Perform a line seach. This is used by DFPMaximise() below.
+   Adapted from Numerical Recipes in C++.
+---------------------------------------------------------------------- */
 
-
-//COMPARE LOG-LIKELIHOOD CALCULATIONS
-
-/*
-if (( newLogLike - oldLogLike) > 1e-6){
-  cout << "*******************" << endl;
-  cout  << "BlockSize: " << blockSize << "\tNew logLike: " << newLogLike << "\tOld logLike: " << oldLogLike
-  << "\tRatio: " << newLogLike / oldLogLike << endl;
-  //	<< "\tDifference: " <<  newLogLike - oldLogLike   << "\tRatio: " << newLogLike / oldLogLike << endl;
-}
-*/
-
-/*
-cout << "-------------(block)" << endl;
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-    dum = blockMatrix.noiseFreeCoeff[i][j];
-    if (i==j) dum *= blockMatrix.noisyCoeff[i] + 1;
-
-    cout << dum  << "\t " ;
-  }
-  cout << endl;
-}
-
-cout << "-------------(IT++ inversion)" << endl;
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-    cout <<  workingMatrix.get(i,j) << "\t " ;
-  }
-  cout << endl;
-}
-cout << "-------------(difference)" << endl;
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-    dum = blockMatrix.noiseFreeCoeff[i][j];
-    if (i==j) dum *= blockMatrix.noisyCoeff[i] + 1;
-    cout <<  dum - workingMatrix.get(i,j) << "\t " ;
-  }
-  cout << endl;
-}
-cout << "-------------" << endl;
-*/
-
-
-// ***ALSO WANT TO CHECK THE DATA VECTOR FOR nData==1***
-//for (i=0; i<data.size(); i++)
-//cout << data[i] << "\t" << newData[i] << "\t" << dataVec.get(i) << endl;
-
-
-//  cout << "NewLogEv: " << newLogEv << "\tOldLogEv: " << logEvidence << endl;
-
-
-
-
-
-
-
-
-//DEBUG- THIS ONLY WORKS FOR blockSize==1
-/*
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-
-    blockMatrix.noiseFreeCoeff[i][j]=1;
-    if (i!=j) {
-workingMatrix.set(i,j,0);
-blockMatrix.noiseFreeCoeff[i][j]=0;
-    }
-
-  }
-}
-*/
-
-
-//COMPARE LOG-DETERMINANT CALCULATIONS
-//    cout << "BlockSize: " << blockSize << endl;
-
-
-/*
-if (( blockMatrix.ComputeMatrixLogDeterminant() -  log(det(workingMatrix)))>1e-6){
-  cout << "*******************" << endl;
-  cout  << "BlockSize: " << blockSize << "\tNew log(det): " << blockMatrix.ComputeMatrixLogDeterminant() << "\tOld log(det): " << log(det(workingMatrix))
-  << "\tDifference: " <<  blockMatrix.ComputeMatrixLogDeterminant() -  log(det(workingMatrix))   << endl;
-}
-*/
-
-/*
-cout << "-------------" << endl;
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-    cout <<  workingMatrix.get(i,j) << " " ;
-  }
-  cout << endl;
-}
-cout << "-------------" << endl;
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-    cout <<  blockMatrix.noiseFreeCoeff[i][j] << " " ;
-  }
-  cout << endl;
-}
-cout << "-------------" << endl;
-for (i=0; i<nTimePoints; i++){
-  for (j=0; j<nTimePoints; j++){
-    if (i==j)
-cout <<  blockMatrix.noisyCoeff[i] << " " ;
-    else
-cout << 0 << " ";
-  }
-  cout << endl;
-}
-cout << "-------------" << endl;
-*/
-
-
-
-/*
-// COMPUTE THE LOG-EVIDENCE FOR A GP MODEL, GIVEN A COVARIANCE FUNCTION AND DATA
-//currently, we're computing two LU decompositions :-(
-//can we pre-compute it, and therefore speed up the det and inv functions??
-double TimecourseDataSet::ComputeLogEvidence(vector< vector<double> > covarianceFunction, vector<double> data){
-  //DECLARATIONS
-  int          i, j;
-  double       logEvidence;
-  int          nVariables=covarianceFunction.size(), nData=data.size();
-  mat          workingMatrix(nVariables, nVariables);
-  vec          workingVector(nData), dataVec(nData);
-  const double PI=4.0*atan(1.0);
-
-  BlockCovarianceMatrix    blockMatrix;
-  vector< vector<double> > noiseFreeCoeff;//'a' values that define the noiseless component of the blocks
-  vector<double>           noisyCoeff;    //'b' values that define the noisy, diagonal component
-  int                      blockSize;
-  double                   newLogLike, oldLogLike, dum, newLogEv;
-  vector<double>           newData;
-  int                      counter=0, index;
-
-
-  //PUT THE DATA IN THE CORRECT FOR TO USE THE IT++ LIBRARY
-  for (i=0; i<nData; i++)
-    dataVec.set(i, data[i]);
-  //PUT THE COVARIANCE FUNCTION IN THE CORRECT FORM TO USE THE IT++ LIBRARY
-  for (i=0; i<nVariables; i++){
-    for (j=0; j<nVariables; j++){
-      workingMatrix.set(i, j, covarianceFunction[i][j]);
-    }
-  }
-  //CONSTRUCT a BlockCovarianceMatrix CLASS VERSION OF THE COVARIANCE MATRIX
-  blockSize   = nData / nTimePoints;
-  blockMatrix = BlockCovarianceMatrix(workingMatrix, nTimePoints, blockSize);
-
-
-
-  //LOGEV TERM: DETERMINANT
-  logEvidence   = -0.5 * log(det(workingMatrix));
-  //LOGEV TERM: CONSTANT
-  logEvidence  -= 0.5 * nVariables * log(2*PI);
-
-
-
-  //RE-CONSTRUCT THE DATA VECTOR SO IT HAS THE CORRECT ORDERING FOR THE BlockMatrix
-  newData = data;
-  counter = 0;
-  for (i=0; i<blockSize; i++){
-    for (j=0; j<nTimePoints; j++){
-      index      = j*blockSize + i;
-
-      //cout << i << "\t"<< counter << "\t" << index << endl;
-
-      newData[index] = data[counter];
-      counter++;
-    }
-  }
-
-
-
-  //LOGEV TERM: MATRIX INVERSE, DATA
-  workingMatrix = inv(workingMatrix);
-  workingVector = workingMatrix * dataVec;//this uses a method from IT++
-  logEvidence  -= 0.5 * (dataVec * workingVector);//this is a dot product
-
-
-
-  //CONSTRUCT THE LOG-EVIDENCE USING THE BlockMatrix CLASS
-  newLogEv  = -0.5 * blockMatrix.ComputeMatrixLogDeterminant();
-  newLogEv -= 0.5 * nVariables * log(2*PI);
-
-
-  //INVERT THE BlockMatrix
-  blockMatrix.InvertMatrix();
-
-
-
-
-  //COMPUTE THE LOG-LIKE USING OUR NEW METHOD
-  oldLogLike = dataVec * workingVector;
-  newLogLike = blockMatrix.ComputeLogLikelihoodProduct(newData);
-
-
-  newLogEv -= 0.5*blockMatrix.ComputeLogLikelihoodProduct(newData);
-
-  logEvidence = newLogEv;
-
-  //IT MIGHT BE SENSIBLE TO FORBID logEv=inf HERE (RESULT OF A SINGULAR MATRIX)
-  //ARE THERE ANY DANGERS TO DOING THIS??
-  if (logEvidence==numeric_limits<double>::infinity())
-    logEvidence = -numeric_limits<double>::infinity();//-ve inf gives us ev=0, which will be rejected
-
-  return(logEvidence);
-}
-*/
-
-
-/////////////////////
-
-
-
-// Perform a line search
 void TimecourseDataSet::
 LineSearch(vector<double>& xold, const double fold, vector<double>& g,
 	   vector<double>& p, vector<double>& x, double& f, const double stpmax,
@@ -1237,9 +937,21 @@ LineSearch(vector<double>& xold, const double fold, vector<double>& g,
     }
 }
 
+/* ----------------------------------------------------------------------
+   Uses the Broyden-Fletcher-Goldfarb-Shanno (BFGS) variant of the
+   Davidon-Fletcher-Powell (DFP) optimisation method (quasi-Newton) to
+   perform function maximisation.
 
+   This function can only be called from a class that inherits this class,
+   and which must define the functions:
+      - ComputeLogEvidenceAndGradientsFromHyperparameters()
+      - ComputeGradientsFromHyperparameters()
+      - ComputeLogEvidenceFromHyperparameters()
+      - ImposeConstraintsOnHyperparameters()
 
-// This method does the BFGS/DFP minimisation.
+   Adapted from Numerical Recipes in C++.
+------------------------------------------------------------------------- */
+
 void TimecourseDataSet::
 DFPMaximise(vector<double>& p, const vector<int>& fix, const double gtol, double& fret, const int blockSize, const vector<double>& yValues)
 {
@@ -1333,6 +1045,29 @@ DFPMaximise(vector<double>& p, const vector<int>& fix, const double gtol, double
 	  for(j=0; j<n; j++) xi[i] -= hessin[i][j]*g[j];
 	}
     }
-  // If we get here, then reached max number of iterations before convergence
+  // If we get here, then we reached max number of iterations before convergence
 }
 
+/* ---------------------------------------------------------------------- */
+
+BlockCovarianceMatrix TimecourseDataSet::
+SquareExponentialCovarianceFunctionMissingSingleObservation(vector<vector<double> > KnFC,
+							    vector<double> KnC,
+							    int KblockSize,
+							    int KnRank,
+							    int timePoint)
+{
+  BlockCovarianceMatrix bcm;
+  cout << "SquareExponentialCovarianceFunctionMissingSingleObservation() has not been implemented in TimecourseDataSet!" << endl;
+  return bcm;
+}
+
+/* ---------------------------------------------------------------------- */
+
+double TimecourseDataSet::GetMLIINoise(vector<int> itemIndex)
+{
+  cout << "GetMLIINoise() has not been implemented in TimecourseDataSet!" << endl;
+  return -1;
+}
+
+/* ---------------------------------------------------------------------- */

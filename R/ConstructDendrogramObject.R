@@ -79,6 +79,7 @@ ConstructDendrogramObject <- function(out, nDataItems, nFeatures, itemLabels){
   outputDendrogram                      <- newMerge
   class(outputDendrogram)               <- "dendrogram"
   attr(outputDendrogram, "logEvidence") <- out$logEvidence
+                                                                              attr(outputDendrogram, "time") <- out$t
   ##return the output dendrogram
   outputDendrogram
 }

@@ -1,67 +1,33 @@
-#include "BlockCovarianceMatrix.h"
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <numeric>
 
-#ifdef ENABLE_LAPACK
-#include "LapackWrapper.h"
-#endif // ENABLE_LAPACK
+#include "BlockCovarianceMatrix.h"
 
+/* ----------------------------------------------------------------------
+   Default constructor
+---------------------------------------------------------------------- */
 
-// Default constructor
-BlockCovarianceMatrix::BlockCovarianceMatrix()
-{}
+BlockCovarianceMatrix::BlockCovarianceMatrix() {}
 
+/* ----------------------------------------------------------------------
+   Constructor: builds "A", the rank-1 sub-matrix
+---------------------------------------------------------------------- */
 
-
-// Factory method. Builds "E", the rank N-1 sub-matrix.
-BlockCovarianceMatrix BlockCovarianceMatrix::Build_E_SubMatrix(const BlockCovarianceMatrix& inputMatrix)
-{
-  //THE OBJET WE ARE GOING TO CONSTRUCT
-  BlockCovarianceMatrix bcm;
-
-  //DECLARATIONS
-  double noisyScaling, newNoiseFree, temp2_newNoiseFree;
-  BlockCovarianceMatrix subMatrix_A;
-
-  //THIS WON'T WORK WITH A RANK-1 INPUT MATRIX
-  assert(inputMatrix.nRank>1);
-
-  //ASSIGN SOME OBVIOUS VALUES
-  bcm.nRank = inputMatrix.nRank - 1;
-  bcm.blockSize = inputMatrix.blockSize;
-
-  //FIND the SUB-MATRIX "A" AND INVERT IT
-  subMatrix_A = BlockCovarianceMatrix(inputMatrix.noisyCoeff[0], inputMatrix.noiseFreeCoeff[0][0], bcm.blockSize);
-  subMatrix_A.InvertRankOneMatrix();
-
-  //INITIALISE THE ARRAYS
-  bcm.noisyCoeff = vector<double>(bcm.nRank);
-  bcm.noiseFreeCoeff=vector<vector<double> >(bcm.nRank, vector<double>(bcm.nRank));
-
-  //ASSIGN THE SUB-MATRIX VALUES
-  const double temp_newNoiseFree = (subMatrix_A.noisyCoeff[0] + bcm.blockSize)*subMatrix_A.noiseFreeCoeff[0][0]*bcm.blockSize;
-  for (int i=0; i<bcm.nRank; i++)
-  {
-    temp2_newNoiseFree=temp_newNoiseFree*inputMatrix.noiseFreeCoeff[i+1][0]; // B
-    for (int j=0; j<bcm.nRank; j++)
-    {
-      //find adjusting noiseFree term
-      newNoiseFree = temp2_newNoiseFree * inputMatrix.noiseFreeCoeff[0][j+1]; // C
-
-      //make adjustments
-      bcm.noiseFreeCoeff[i][j] = inputMatrix.noiseFreeCoeff[i+1][j+1] - newNoiseFree;
-    }
-    //find and adjust the noisey term for this row
-    noisyScaling  = inputMatrix.noiseFreeCoeff[i+1][i+1] / bcm.noiseFreeCoeff[i][i];
-    bcm.noisyCoeff[i] = inputMatrix.noisyCoeff[i+1] * noisyScaling;
-  }
-
-  return bcm;
-}
-
-
-
-// Constructor. "A", THE RANK 1 SUB-MATRIX.
-BlockCovarianceMatrix::BlockCovarianceMatrix(const double noisyValue, const double noiseFreeValue, const int inputBlockSize)
+BlockCovarianceMatrix::
+BlockCovarianceMatrix(const double noisyValue,
+		      const double noiseFreeValue,
+		      const int inputBlockSize)
 {
   nRank = 1;
   blockSize = inputBlockSize;
@@ -69,50 +35,51 @@ BlockCovarianceMatrix::BlockCovarianceMatrix(const double noisyValue, const doub
   noiseFreeCoeff.push_back(vector<double>(1, noiseFreeValue));
 }
 
+/* ----------------------------------------------------------------------
+   Factory method: builds "E", the rank N-1 sub-matrix
+---------------------------------------------------------------------- */
 
-
-// Factory method. Builds "E", the rank N-1 sub-matrix, when [A] has a
-// single missing observation.
-BlockCovarianceMatrix BlockCovarianceMatrix::Build_E_SubMatrixMissingSingleObservation(const BlockCovarianceMatrix& inputMatrix)
+BlockCovarianceMatrix BlockCovarianceMatrix::
+Build_E_SubMatrix(const BlockCovarianceMatrix& inputMatrix)
 {
-  //THE OBJECT WE ARE GOING TO CONSTRUCT
+  // The object we are going to construct
   BlockCovarianceMatrix bcm;
 
-  //DECLARATIONS
+  // Declarations
   double noisyScaling, newNoiseFree, temp2_newNoiseFree;
   BlockCovarianceMatrix subMatrix_A;
 
-  //THIS WON'T WORK WITH A RANK-1 INPUT MATRIX
-  assert(inputMatrix.nRank>1);
+  // This won't work with a rank-1 input matrix
+  assert(inputMatrix.nRank > 1);
 
-  //ASSIGN SOME OBVIOUS VALUES
-  bcm.nRank     = inputMatrix.nRank - 1;
+  // Assign some obvious values
+  bcm.nRank = inputMatrix.nRank - 1;
   bcm.blockSize = inputMatrix.blockSize;
 
-  //FIND THE SUB-MATRIX "A" AND INVERT IT
-  subMatrix_A = BlockCovarianceMatrix(inputMatrix.noisyCoeff[0], inputMatrix.noiseFreeCoeff[0][0], bcm.blockSize - 1);
+  // Find the sub-matrix "A" and invert it
+  subMatrix_A = BlockCovarianceMatrix(inputMatrix.noisyCoeff[0],
+				      inputMatrix.noiseFreeCoeff[0][0],
+				      bcm.blockSize);
   subMatrix_A.InvertRankOneMatrix();
 
-  //INITIALISE THE ARRAYS
+  // Initialise the arrays
   bcm.noisyCoeff = vector<double>(bcm.nRank);
-  bcm.noiseFreeCoeff = vector<vector<double> >(bcm.nRank, vector<double>(bcm.nRank));
+  bcm.noiseFreeCoeff=vector<vector<double> >(bcm.nRank, vector<double>(bcm.nRank));
 
-  //ASSIGN THE SUB-MATRIX VALUES
-  //a pre-computation
-  const double temp_newNoiseFree = (subMatrix_A.noisyCoeff[0]+(bcm.blockSize - 1))*subMatrix_A.noiseFreeCoeff[0][0]*(bcm.blockSize - 1);
+  // Assign the sub-matrix values
+  const double temp_newNoiseFree = (subMatrix_A.noisyCoeff[0] + bcm.blockSize)*subMatrix_A.noiseFreeCoeff[0][0]*bcm.blockSize;
   for (int i=0; i<bcm.nRank; i++)
   {
-    temp2_newNoiseFree = temp_newNoiseFree * inputMatrix.noiseFreeCoeff[i+1][0]; // B
-
+    temp2_newNoiseFree=temp_newNoiseFree*inputMatrix.noiseFreeCoeff[i+1][0]; // B
     for (int j=0; j<bcm.nRank; j++)
     {
-      //find adjusting noiseFree term
+      // find adjusting noiseFree term
       newNoiseFree = temp2_newNoiseFree * inputMatrix.noiseFreeCoeff[0][j+1]; // C
 
-      //make the adjustments
+      // make adjustments
       bcm.noiseFreeCoeff[i][j] = inputMatrix.noiseFreeCoeff[i+1][j+1] - newNoiseFree;
     }
-    //find and adjust the noisey term for this row
+    // find and adjust the noisy term for this row
     noisyScaling  = inputMatrix.noiseFreeCoeff[i+1][i+1] / bcm.noiseFreeCoeff[i][i];
     bcm.noisyCoeff[i] = inputMatrix.noisyCoeff[i+1] * noisyScaling;
   }
@@ -120,9 +87,63 @@ BlockCovarianceMatrix BlockCovarianceMatrix::Build_E_SubMatrixMissingSingleObser
   return bcm;
 }
 
+/* ----------------------------------------------------------------------
+   Factory method: builds "E", the rank N-1 sub-matrix, when [A] has a
+   single missing observation.
+---------------------------------------------------------------------- */
 
+BlockCovarianceMatrix BlockCovarianceMatrix::
+Build_E_SubMatrixMissingSingleObservation(const BlockCovarianceMatrix& inputMatrix)
+{
+  // The object we are going to construct
+  BlockCovarianceMatrix bcm;
 
-// Perform a recursive matrix inversion.
+  // Declarations
+  double noisyScaling, newNoiseFree, temp2_newNoiseFree;
+  BlockCovarianceMatrix subMatrix_A;
+
+  // This won't work with a rank-1 matrix
+  assert(inputMatrix.nRank > 1);
+
+  // Assign some obvious values
+  bcm.nRank     = inputMatrix.nRank - 1;
+  bcm.blockSize = inputMatrix.blockSize;
+
+  // Find the sub-matrix "A" and invert it
+  subMatrix_A = BlockCovarianceMatrix(inputMatrix.noisyCoeff[0],
+				      inputMatrix.noiseFreeCoeff[0][0],
+				      bcm.blockSize - 1);
+  subMatrix_A.InvertRankOneMatrix();
+
+  // Initialise the arrays
+  bcm.noisyCoeff = vector<double>(bcm.nRank);
+  bcm.noiseFreeCoeff = vector<vector<double> >(bcm.nRank, vector<double>(bcm.nRank));
+
+  // Assign the sub-matrix values (pre-computation)
+  const double temp_newNoiseFree = (subMatrix_A.noisyCoeff[0]+(bcm.blockSize - 1))*subMatrix_A.noiseFreeCoeff[0][0]*(bcm.blockSize - 1);
+  for (int i=0; i<bcm.nRank; i++)
+  {
+    temp2_newNoiseFree = temp_newNoiseFree * inputMatrix.noiseFreeCoeff[i+1][0]; // B
+    for (int j=0; j<bcm.nRank; j++)
+    {
+      // find adjusting noiseFree term
+      newNoiseFree = temp2_newNoiseFree * inputMatrix.noiseFreeCoeff[0][j+1]; // C
+
+      // make the adjustments
+      bcm.noiseFreeCoeff[i][j] = inputMatrix.noiseFreeCoeff[i+1][j+1] - newNoiseFree;
+    }
+    // find and adjust the noisy term for this row
+    noisyScaling  = inputMatrix.noiseFreeCoeff[i+1][i+1] / bcm.noiseFreeCoeff[i][i];
+    bcm.noisyCoeff[i] = inputMatrix.noisyCoeff[i+1] * noisyScaling;
+  }
+
+  return bcm;
+}
+
+/* ----------------------------------------------------------------------
+   Perform a recursive matrix inversion on this matrix.
+---------------------------------------------------------------------- */
+
 void BlockCovarianceMatrix::InvertMatrix()
 {
   if(nRank==1)
@@ -131,109 +152,49 @@ void BlockCovarianceMatrix::InvertMatrix()
   }
   else
   {
-#ifdef ENABLE_LAPACK
-    // This case currently does not work, so ENABLE_LAPACK is not defined
-    if(blockSize==1)
-    {
-      // Use LAPACK to perform general matrix inversion
-      InvertGeneralMatrix();
-    }
-    else
-#endif // ENABLE_LAPACK
-    {
-      InvertBlockMatrix();
-    }
+    InvertBlockMatrix();
   }
 }
 
+/* ----------------------------------------------------------------------
+   Consider the matrix
+      K = [A B]
+          [C D]
+   and define E = D-C*(A^-1)*B, then we use the identity
+      K^-1 = [(A-B*(D^-1)*C)^-1  -(A^-1)*B*(E^-1)]
+             [-(D^-1)*C*(A-B*(D^-1)*C)^-1  (E^-1)]
+   to perform a block matrix pseudoinversion on this object.
+---------------------------------------------------------------------- */
 
-
-// Use LAPACK to perform a general matrix inversion.
-//
-// N.B. This function seems quite inefficient; the use of a
-// 'workingMatrix' seems superfluous. However, since the code
-// is currently not using this function - and I'm lazy - I shall leave it.
-void BlockCovarianceMatrix::InvertGeneralMatrix()
-{
-#ifdef ENABLE_LAPACK
-  //DECLARATIONS
-  int    i, j;
-  double currentElement;
-  double *workingMatrix;
-
-  //ASSERT THAT THIS ISN'T A BLOCK MATRIX
-  assert(blockSize==1);
-  assert(nRank>0);
-
-  //MEMORY ALLOCATION
-  workingMatrix=new double[nRank*nRank];
-
-  //CONSTRUCT A VERSION OF THE COVARIANCE MATRIX (FOR LAPACK)
-  for (i=0; i<nRank; i++)
-  {
-    for (j=1; j<nRank; j++)
-    {
-      currentElement = noiseFreeCoeff[i][j];
-      if (i==j) currentElement *= noisyCoeff[i] + 1;
-      workingMatrix[i*nRank+j] = currentElement;
-    }
-  }
-
-  //PERFORM THE MATRIX INVERSION USING LAPACK
-  LAPACK_MatrixInverse(workingMatrix, nRank);
-
-  //COPY THE INVERTED MATRIX BACK INTO THIS OBJECT
-  for (i=0; i<nRank; i++)
-  {
-    for (j=1; j<nRank; j++)
-    {
-      //copy all the noise-free values
-      noiseFreeCoeff[i][j] = workingMatrix[i*nRank+j];
-    }
-
-    //make adjustments for the diagonal, noisy terms
-    noisyCoeff[i] = workingMatrix[i*nRank+j] - 1;
-    noiseFreeCoeff[i][i] = 1;
-  }
-
-  // Cleanup
-  delete [] workingMatrix;
-#endif // ENABLE_LAPACK
-}
-
-
-
-// Use the identity for sub-dividing a block matrix:
-//   K = [A B]  and  E = D - C*A_inverse*B
-//       [C D]
 void BlockCovarianceMatrix::InvertBlockMatrix()
 {
-  //DECLARATIONS
+  // Declarations
   int i, j;
   BlockCovarianceMatrix subMatrix_A, subMatrix_E;
   vector<double>        noiseFree_B, offDiagonal;
   double                diagonal_noisy, diagonal_noiseFree, factor_AB;
 
-  //IF WE REACH HERE, USE THE BLOCK-MATRIX STRUCTURE TO OUR ADVANTAGE
-  //FIND the SUB-MATRICES "A" AND "E"
+  // Use the block-matrix structure to our advantage;
+  // find the sub-matrices A and E
   subMatrix_A = BlockCovarianceMatrix(noisyCoeff[0], noiseFreeCoeff[0][0], blockSize);
   subMatrix_E = Build_E_SubMatrix(*this);
 
-  //INVERT "A" AND "E"
+  // Invert A and E
   subMatrix_A.InvertRankOneMatrix();
   subMatrix_E.InvertMatrix();
 
-  //FIND THE SUB-MATRICES B AND C
-  //symmetry => only need one of these
+  // Find the sub-matrices B and C
+  // (symmetry => only need one of these)
   noiseFree_B = noiseFreeCoeff[0];
-  noiseFree_B.erase(noiseFree_B.begin(), noiseFree_B.begin()+1);//remove the first element as this is part of A, not B
+  // remove the first element as this is part of A, not B
+  noiseFree_B.erase(noiseFree_B.begin(), noiseFree_B.begin()+1);
 
-  //FIND THE FACTOR COMING FROM A_inv * B
+  // Find the factor coming from (A^-1)*B
   factor_AB  = subMatrix_A.noiseFreeCoeff[0][0];
   factor_AB *= blockSize + subMatrix_A.noisyCoeff[0];
 
-  //HENCE CONSTRUCT THE OVERALL INVERSE MATRIX
-  //copy E_inverse into the D slots
+  // Construct the overall inverse matrix;
+  // copy E^-1 into the D slots
   for (i=1; i<nRank; i++)
   {
     noisyCoeff[i] = subMatrix_E.noisyCoeff[i-1];
@@ -242,162 +203,173 @@ void BlockCovarianceMatrix::InvertBlockMatrix()
       noiseFreeCoeff[i][j] = subMatrix_E.noiseFreeCoeff[i-1][j-1];
     }
   }
-  //construct the remaining off-diagonal elements, using B * E_inv
+  // construct the remaining off-diagonal elements, using B * E^-1
   offDiagonal = subMatrix_E.BlockMultiply(noiseFree_B);
   for (i=1; i<nRank; i++)
   {
-    //using the fact our matrix is symmetric
+    // using the fact that our matrix is symmetric
     noiseFreeCoeff[0][i] = noiseFreeCoeff[i][0] = -factor_AB * offDiagonal[i-1];
   }
-  //construct the final diagonal element
+  // construct the final diagonal element
   diagonal_noiseFree = 0;
-  for (i=0; i<(nRank-1); i++) //need to find B * E_inv * C here...
+  for (i=0; i<(nRank-1); i++) // need to find B * E^-1 * C here...
   {
-    //using the fact that C_transpose = B
+    // using the fact that C_transpose = B
     diagonal_noiseFree += blockSize * offDiagonal[i] * noiseFree_B[i];
   }
   diagonal_noiseFree *= factor_AB * factor_AB;
-  //also need to add on A_inverse
+  // also need to add on A^-1
   diagonal_noiseFree += subMatrix_A.noiseFreeCoeff[0][0];
-  //hence compute the new noisy term
+  // hence compute the new noisy term
   diagonal_noisy = subMatrix_A.noisyCoeff[0] * subMatrix_A.noiseFreeCoeff[0][0];
   diagonal_noisy /= diagonal_noiseFree;
-  //and store the values in this object
+  // and store the values in this object
   noiseFreeCoeff[0][0] = diagonal_noiseFree;
   noisyCoeff[0] = diagonal_noisy;
 }
 
+/* ----------------------------------------------------------------------
+   Invert analytically a rank-1 matrix.
+---------------------------------------------------------------------- */
 
-
-// Invert analytically a rank-one matrix.
 void BlockCovarianceMatrix::InvertRankOneMatrix()
 {
-  //DECLARATIONS
+  // Declarations
   double newNoisy, newNoiseFree;
 
-  //COMPUTE THE NEW NOISY VALUE (FOR THE DIAGONAL ELEMENTS)
+  // Compute the new noisy value (for the diagonal elements)
   newNoisy  = -noisyCoeff[0] - blockSize;
 
-  //COMPUTE THE NEW NOISE-FREE VALUE
+  // Compute the new noise-free value
   newNoiseFree  = -1.0 /
     (noiseFreeCoeff[0][0] * (noisyCoeff[0] * (noisyCoeff[0] + blockSize)));
 
-  //UPDATE THE MATRIX VALUES, SO THIS MATRIX OBJECT IS NOW INVERTED
+  // Update the matrix values, so this matrix object is now inverted
   noisyCoeff[0] = newNoisy;
   noiseFreeCoeff[0][0] = newNoiseFree;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the matrix log-determinant for the matrix missing a single
+   observation.
+---------------------------------------------------------------------- */
 
-
-// Compute the matrix log-determinant for the matrix missing a single observation.
-double BlockCovarianceMatrix::ComputeMatrixMissingSingleObservationLogDeterminant() const
+double BlockCovarianceMatrix::
+ComputeMatrixMissingSingleObservationLogDeterminant() const
 {
-  //DECLARATIONS
+  // Declarations
   double logDeterminant;
-  BlockCovarianceMatrix subMatrix_A, subMatrix_Efirst; //use the maths notation here
+  BlockCovarianceMatrix subMatrix_A, subMatrix_Efirst;
 
-  //extract small A and first sub E matrix
+  // extract small A and first sub E matrix
   subMatrix_A = BlockCovarianceMatrix(noisyCoeff[0], noiseFreeCoeff[0][0], blockSize-1);
   subMatrix_Efirst = Build_E_SubMatrixMissingSingleObservation(*this);
 
-  //compute the contributions from the sub-matrices
+  // compute the contributions from the sub-matrices
   logDeterminant  = subMatrix_A.ComputeRankOneMatrixDeterminant();
   logDeterminant += subMatrix_Efirst.ComputeMatrixDeterminant();
 
   return logDeterminant;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the matrix inverse for the matrix missing a single observation
+   (the matrix loses its first row and column).
+---------------------------------------------------------------------- */
 
-
-// Compute the matrix inverse for the matrix missing a single observation.
-// (The matrix loses its first row and column.)
 void BlockCovarianceMatrix::InvertMatrixMissingSingleObservation()
 {
-  //DECLARATIONS
+  // Declarations
   int i, j;
   BlockCovarianceMatrix subMatrix_A1, subMatrix_E1;
   vector<double>        noiseFree_B, offDiagonal;
   double                diagonal_noisy, diagonal_noiseFree, factor_AB;
 
-  //M = [A,B][C,D], A is a smaller rank 1 matrix, since missing observation
+  //M = [A,B][C,D], A is a smaller rank-1 matrix, since missing observation
 
-  //RECURSION TO FIND THE INVERSE MATRIX
-  //FIND the SUB-MATRICES "A" AND "E"
-  subMatrix_A1 = BlockCovarianceMatrix(noisyCoeff[0], noiseFreeCoeff[0][0], blockSize-1); //A is missing an observation, so has a smaller blockSize
+  // Recursion to find the inverse matrix;
+  // find the sub-matrices A and E
+  subMatrix_A1 = BlockCovarianceMatrix(noisyCoeff[0], noiseFreeCoeff[0][0], blockSize-1);
   subMatrix_E1 = Build_E_SubMatrixMissingSingleObservation(*this);
 
-  //INVERT "A" AND "E"
+  // Invert A and E
   subMatrix_A1.InvertRankOneMatrix();
   subMatrix_E1.InvertMatrix();
 
-  //FIND THE SUB-MATRICES B AND C
-  //symmetry => only need one of these
-  noiseFree_B = noiseFreeCoeff[0]; //the first row of the M.noiseFreeCoeff
-  noiseFree_B.erase(noiseFree_B.begin(), noiseFree_B.begin()+1);//remove the first element as this is part of A, not B
+  // Find the sub-matrices B and C
+  // (symmetry => only need one of these)
+  //the first row of the M.noiseFreeCoeff
+  noiseFree_B = noiseFreeCoeff[0];
+  // remove the first element as this is part of A, not B
+  noiseFree_B.erase(noiseFree_B.begin(), noiseFree_B.begin()+1);
 
-  //FIND THE FACTOR COMING FROM A_inv * B
+  // Find the factor coming from (A^-1)*B
   factor_AB  = subMatrix_A1.noiseFreeCoeff[0][0];
-  factor_AB *= (blockSize - 1) + subMatrix_A1.noisyCoeff[0]; //not included any values from B matrix yet
+  factor_AB *= (blockSize - 1) + subMatrix_A1.noisyCoeff[0];
 
-  //HENCE CONSTRUCT THE OVERALL INVERSE MATRIX
-  //copy E_inverse into the D slots
+  // Construct the overall inverse matrix;
+  // copy E^-1 into the D slots
   for (i=1; i<nRank; i++)
   {
-    noisyCoeff[i] = subMatrix_E1.noisyCoeff[i-1]; //copying the diagonal elements
+    noisyCoeff[i] = subMatrix_E1.noisyCoeff[i-1]; // copying the diagonal elements
     for (j=1; j<nRank; j++)
     {
       noiseFreeCoeff[i][j] = subMatrix_E1.noiseFreeCoeff[i-1][j-1];
     }
   }
-  //construct the remaining off-diagonal elements, using B * E_inv
+  // construct the remaining off-diagonal elements, using B * E^-1
   offDiagonal = subMatrix_E1.BlockMultiply(noiseFree_B);
   for (i=1; i<nRank; i++)
   {
-    //using the fact our matrix is symmetric
+    // using the fact our matrix is symmetric
     noiseFreeCoeff[0][i] = noiseFreeCoeff[i][0] = -factor_AB * offDiagonal[i-1];
   }
-  //construct the final diagonal element
+  // construct the final diagonal element
   diagonal_noiseFree = 0;
-  for (i=0; i<(nRank-1); i++) //need to find B * E_inv * C here...
+  for (i=0; i<(nRank-1); i++) // need to find B * E_inv * C here...
   {
-    //using the fact that C_transpose = B, dont subtract 1 from blockSize
-    //size going across rows
+    // using the fact that C_transpose = B, dont subtract 1 from blockSize
+    // size going across rows
     diagonal_noiseFree += blockSize * offDiagonal[i] * noiseFree_B[i];
   }
   diagonal_noiseFree *= factor_AB * factor_AB; // as is
-  //also need to add on A_inverse
+  // also need to add on A_inverse
   diagonal_noiseFree += subMatrix_A1.noiseFreeCoeff[0][0]; // as is
-  //hence compute the new noisy term
+  // hence compute the new noisy term
   diagonal_noisy = subMatrix_A1.noisyCoeff[0] * subMatrix_A1.noiseFreeCoeff[0][0];
   diagonal_noisy /= diagonal_noiseFree;
-  //and store the values in this object
+  // and store the values in this object
   noiseFreeCoeff[0][0] = diagonal_noiseFree;
   noisyCoeff[0] = diagonal_noisy;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the matrix log-determinant using the identity
+   
+      det[A B][C D] = det(A)det(E)
+      
+   where E=D-C*(A^-1)*B.
+---------------------------------------------------------------------- */
 
-
-// Compute the matrix log determinant
-// Using det[A B][C D] = det(A)det(E) where E = D-C*inv(A)*B
 double BlockCovarianceMatrix::ComputeMatrixDeterminant() const
 {
-  //DECLARATIONS
+  // Declarations
   double logDeterminant;
   BlockCovarianceMatrix subMatrix_A, subMatrix_E;//use the maths notation here
 
-  //RECURSION TO FIND THE LOG-DET
+  // Recursion to find the log-det
   if (nRank==1)
   {
     logDeterminant = ComputeRankOneMatrixDeterminant();
   }
   else
   {
-    //extract rank n-1 and rank-1 sub-matrices
-    //remember that we want "E"
+    // extract rank n-1 and rank-1 sub-matrices
+    // remember that we want "E"
     subMatrix_A = BlockCovarianceMatrix(noisyCoeff[0], noiseFreeCoeff[0][0], blockSize);
     subMatrix_E = Build_E_SubMatrix(*this);
 
-    //compute the contributions from the sub-matrices
+    // compute the contributions from the sub-matrices
     logDeterminant  = subMatrix_A.ComputeRankOneMatrixDeterminant();
     logDeterminant += subMatrix_E.ComputeMatrixDeterminant();
   }
@@ -405,15 +377,15 @@ double BlockCovarianceMatrix::ComputeMatrixDeterminant() const
   return logDeterminant;
 }
 
+/* ----------------------------------------------------------------------
+   Compute analytically the rank-1 matrix determinant.
+---------------------------------------------------------------------- */
 
-
-// Compute analytically the rank-one matrix determinant.
 double BlockCovarianceMatrix::ComputeRankOneMatrixDeterminant() const
 {
-  //DECLARATIONS
+  // Declarations
   double logDeterminant;
 
-  //CHECK HERE THAT THIS DOUBLELY IS A RANK-ONE MATRIX
   assert(nRank==1);
 
   if (noiseFreeCoeff[0][0] < 0.0 || noisyCoeff[0] < 0.0)
@@ -421,7 +393,7 @@ double BlockCovarianceMatrix::ComputeRankOneMatrixDeterminant() const
     cout << "problem with log Determinant: nan" << endl;
   }
 
-  //COMPUTE THE LOG-DETERMINANT
+  //Compute the log-det
   logDeterminant  = log(noiseFreeCoeff[0][0]) * blockSize;
   logDeterminant += log(noisyCoeff[0]) * (blockSize - 1);
   logDeterminant += log(noisyCoeff[0] + blockSize);
@@ -429,30 +401,32 @@ double BlockCovarianceMatrix::ComputeRankOneMatrixDeterminant() const
   return logDeterminant;
 }
 
+/* ----------------------------------------------------------------------
+   Method to block-multiply this block-matrix and a vector.
+---------------------------------------------------------------------- */
 
-
-// Method to block-multiply a block-matrix and a vector
-vector<double> BlockCovarianceMatrix::BlockMultiply(const vector<double>& inputVector) const
+vector<double> BlockCovarianceMatrix::
+BlockMultiply(const vector<double>& inputVector) const
 {
-  //DECLARATIONS
+  // Declarations
   int i;
   double currentElement;
   const int input_size=inputVector.size();
   vector<double> outputVector=vector<double>(input_size);
 
-  //COMPUTE THE OUTPUT VECTOR ELEMENTS
+  // Compute the output vector elements
   for (i=0; i<input_size; i++)
   {
     // Inner product: <noiseFreeCoeff row, inputVector>
-    currentElement = inner_product(inputVector.begin(),
-                                   inputVector.end(),
-                                   noiseFreeCoeff[i].begin(),
-                                   0.0);
+    currentElement = std::inner_product(inputVector.begin(),
+					inputVector.end(),
+					noiseFreeCoeff[i].begin(),
+					0.0);
 
-    // Since it's a block matrix, we use each matrix term blockSize-many times:
+    // Since it's a block matrix, we use each matrix term blockSize-many times
     currentElement *= blockSize;
 
-    // Add the (diagonal) noise term:
+    // Add the (diagonal) noise term
     currentElement += noisyCoeff[i] * noiseFreeCoeff[i][i] * inputVector[i];
 
     // Store the result
@@ -462,45 +436,48 @@ vector<double> BlockCovarianceMatrix::BlockMultiply(const vector<double>& inputV
   return outputVector;
 }
 
+/* ----------------------------------------------------------------------
+   Method to find the (i,j)-th element of the block-matrix.
+---------------------------------------------------------------------- */
 
-
-// Method to find the (i,j)-th element of the block-matrix
 double BlockCovarianceMatrix::GetElement(const int i, const int j) const
 {
-  //DECLARATIONS
+  // Declarations
   int block_i, block_j;
   double matrixElement;
 
-  //FIND WHICH BLOCK THE ELEMENT BELONGS TO
+  // Find which block the element belongs to
   block_i = i / blockSize;
   block_j = j / blockSize;
 
-  //FIND THE MATRIX ELEMENT
+  // Find the matrix element
   matrixElement = noiseFreeCoeff[block_i][block_j];
 
-  //IF IT'S A DIAGONAL ELEMENT, MAKE AN ADJUSTMENT
-  if (i==j)
-    matrixElement *= 1.0 + noisyCoeff[block_i];
+  // If it's a diagonal element we make an adjustment
+  if (i==j) matrixElement *= 1.0 + noisyCoeff[block_i];
 
   return matrixElement;
 }
 
+/* ----------------------------------------------------------------------
+   Method to find the i-th row of the block matrix when a single
+   observation is missing.
+---------------------------------------------------------------------- */
 
-
-// Method to find the i-th row of the block-matrix when a single observation is missing
-vector<double> BlockCovarianceMatrix::GetRowForMatrixMissingSingleObservation(const int index) const
+vector<double> BlockCovarianceMatrix::
+GetRowForMatrixMissingSingleObservation(const int index) const
 {
-  //DECLARATIONS
+  // Declarations
   int newindex, block_i;
   vector<double> rowVector = vector<double>(nRank*blockSize);
 
-  //Make alteration to the index
+  // Make alteration to the index
   newindex = index + 1;
 
-  //FIND WHICH BLOCK THE ROW BELONGS TO
+  // Find which block the row belongs to
   block_i = newindex / blockSize;
 
-  //FIND THE MATRIX ELEMENTS (noise-free component)
+  // Find the matrix elements (noise-free component
   vector<double>::const_iterator inIt = noiseFreeCoeff[block_i].begin();
   vector<double>::iterator rowVectorIt = rowVector.begin();
   while (inIt != noiseFreeCoeff[block_i].end())
@@ -509,7 +486,7 @@ vector<double> BlockCovarianceMatrix::GetRowForMatrixMissingSingleObservation(co
     fill(rowVectorIt, outItEnd, *inIt++);
     rowVectorIt = outItEnd;
   }
-  // ^ this is a much more efficient version of the following:
+  // the above is a much more efficient version of the following:
   /*
   for (i=0; i<nRank; i++)
   {
@@ -520,25 +497,27 @@ vector<double> BlockCovarianceMatrix::GetRowForMatrixMissingSingleObservation(co
   }
   */
 
-  //ADJUST THE DIAGONAL ELEMENT
+  // Adjust the diagonal element
   rowVector[newindex] *= 1 + noisyCoeff[block_i];
-  rowVector.erase(rowVector.begin(), rowVector.begin()+1);//Delete the first element of rowVector, since this corresponds to the missing observation
+  // the first element of rowVector corresponds to the missing observation
+  rowVector.erase(rowVector.begin(), rowVector.begin()+1);
 
   return rowVector;
 }
 
+/* ----------------------------------------------------------------------
+   Method to build the full i-th row of the block-matrix.
+---------------------------------------------------------------------- */
 
-
-// Method to build the full i-th row of the block-matrix
 vector<double> BlockCovarianceMatrix::GetRow(const int index) const
 {
-  //DECLARATIONS
+  // Declarations
   vector<double> rowVector=vector<double>(nRank*blockSize);
-  
-  //FIND WHICH BLOCK THE ROW BELONGS TO
-  int block_i = index / blockSize; //index goes down the rows in the matrix
 
-  //FIND THE MATRIX ELEMENTS (noise-free component)
+  // Find the block this row belongs to
+  int block_i = index / blockSize;
+
+  // Find the matrix elements (noise-free component)
   vector<double>::const_iterator inIt = noiseFreeCoeff[block_i].begin();
   vector<double>::iterator rowVectorIt = rowVector.begin();
   while (inIt != noiseFreeCoeff[block_i].end())
@@ -547,7 +526,7 @@ vector<double> BlockCovarianceMatrix::GetRow(const int index) const
       fill(rowVectorIt, outItEnd, *inIt++);
       rowVectorIt = outItEnd;
     }
-  // ^ this is a more efficient version of the following:
+  // the above is a much more efficient version of the following:
   /*
     for (i=0; i<nRank; i++)
     {
@@ -558,108 +537,68 @@ vector<double> BlockCovarianceMatrix::GetRow(const int index) const
     }
   */
 
-  //ADJUST THE DIAGONAL ELEMENT
+  // Adjust the diagonal element
   rowVector[index] *= 1.0 + noisyCoeff[block_i];
 
   return rowVector;
 }
 
+/* ----------------------------------------------------------------------
+   Method to compute the bilinear form, y_transpose * K * y, where y=data,
+   for K missing a single observation.
+   In practice, K should have been inverted before calling this.
+---------------------------------------------------------------------- */
 
-
-// Method to form the product y_transpose * K * y for K missing a single observation
-// N.B. This assumes that we have already inverted K.
-double BlockCovarianceMatrix::ComputeLogLikelihoodProductMissingSingleObservation(const vector<double>& data) const
+double BlockCovarianceMatrix::
+ComputeLogLikelihoodProductMissingSingleObservation(const vector<double>& data) const
 {
-  //DECLARATIONS
+  // Declarations
   int k;
   double logLike, currentValue;
   vector<double> currentRow;
   vector<double>::const_iterator dataIt=data.begin();
 
-  //ASSERT THAT THE data VECTOR IS THE CORRECT SIZE
   assert(data_size==(nRank*blockSize-1)); //Should be missing an observation
 
-  //FORM FIRST PRODUCT, K*y
+  // Form the product K*y
   logLike=0;
-  //going across the rows in the K matrix
+  // going across the rows in the K matrix
   for(k=0; dataIt != data.end(); ++dataIt, ++k)
   {
-    //get the current row from the covariance matrix
+    // get the current row from the covariance matrix
     currentRow = GetRowForMatrixMissingSingleObservation(k);
-    //loop to sum the terms in a vector*matrix product
+    // loop to sum the terms in a vector*matrix product
     currentValue = std::inner_product(data.begin(), data.end(), currentRow.begin(), 0.0);
-    //now form the contribution to the overall product, y_t * K * y
+    // now form the contribution to the overall product, y_t * K * y
     logLike += (*dataIt) * currentValue;
   }
 
   return logLike;
 }
 
+/* ----------------------------------------------------------------------
+   Method to compute the bilinear form, y_transpose * K * y, where y=data.
+   In practice, K should have been inverted before calling this.
+---------------------------------------------------------------------- */
 
-
-// Method to compute the bilinear form, y_transpose * K * y, where y=data.
-// In practice, K should have been inverted before calling this.
-double BlockCovarianceMatrix::ComputeLogLikelihoodProduct(const vector<double>& data) const
+double BlockCovarianceMatrix::
+ComputeLogLikelihoodProduct(const vector<double>& data) const
 {
-  // Here is the simple and concise way of doing it:
   // Compute K * y
   vector<double> temp=VectorMultiply(data);
+  
   // Compute and return y^t * (K * y)
   return std::inner_product(temp.begin(), temp.end(), data.begin(), 0.0);
-
-  //////////////////////////////////////////////////////////////////////
-
-  // Here is the long and convoluted way which, in theory, should be faster,
-  // but isn't!
-  /*
-  vector<double>::const_iterator dataIt_e;
-  vector<double> blockData = vector<double>(nRank);
-  vector<double>::iterator blockDataIt;
-  vector<double>::const_iterator dataIt;
-  double ans=0;
- 
-
-  // Build a block-vector version of the data
-  blockDataIt = blockData.begin();
-  dataIt = data.begin();
-  while(blockDataIt != blockData.end())
-    {
-      dataIt_e = dataIt + blockSize;
-      *blockDataIt++ = std::accumulate(dataIt, dataIt_e, 0.0);
-      dataIt = dataIt_e;
-    }
-  
-  // Compute blockData^t * noiseFreeCoeff * blockData
-  vector<vector<double> >::const_iterator noiseFreeCoeffIt = noiseFreeCoeff.begin();
-  int id=0;
-  while(noiseFreeCoeffIt != noiseFreeCoeff.end())
-    {
-      vector<double> row = *noiseFreeCoeffIt++;
-      ans += std::inner_product(row.begin(), row.end(), blockData.begin(), 0.0)*blockData[id];
-      id++;
-    }
-
-  // Noise correction
-  double noise=0;
-  for(int i=0; i<nRank; i++)
-    {
-      double ip=0;
-      for(int j=i*blockSize; j<(i+1)*blockSize; j++)
-	{
-	  ip += data[j]*data[j];
-	}
-      noise += noiseFreeCoeff[i][i] * noisyCoeff[i] * ip;
-    }
-  
-  return ans+noise;*/
 }
 
+/* ----------------------------------------------------------------------
+   Compute the product K * y, where y=inputVector.
+---------------------------------------------------------------------- */
 
-
-// Compute the product K * y, where y=inputVector.
-vector<double> BlockCovarianceMatrix::VectorMultiply(const vector<double>& inputVector) const
+vector<double> BlockCovarianceMatrix::
+VectorMultiply(const vector<double>& inputVector) const
 {
-  //DECLARATIONS
+  // Declarations
   vector<double> outputVector=vector<double>(inputVector.size());
   vector<double> row;
   vector<double>::const_iterator inIt, inIt_e;
@@ -697,36 +636,5 @@ vector<double> BlockCovarianceMatrix::VectorMultiply(const vector<double>& input
   return outputVector;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-/* I have made no changes to this function - Robert
-//METHOD TO FORM THE PRODUCT y_transpose * K * y
-//(note that this assumes we've already inverted K)
-double BlockCovarianceMatrix::ComputeLogLikelihoodProduct(vector<double> data){
-  //DECLARATIONS
-  int            i, j, k, counter;
-  double         logLike=0, currentValue, currentElement;
-  vector<double> workingVector;
-  //ASSERT THAT THE data VECTOR IS THE CORRECT SIZE
-  assert(data.size()==nRanks*blockSize);
-  //FORM FIRST PRODUCT, K*y
-  for (k=0; k<data.size(); k++){
-    currentValue = 0; //initialise for the new element
-    counter      = 0;
-    //loop to sum the terms in a vector*matrix product
-    for (i=0; i<nRank; i++){
-      for (j=0; j<blockSize; j++){
-	currentValue += data[counter] * GetElement(k, counter);
-	counter++;
-      }
-    }
-    //store the completed value
-    workingVector.push_back(currentValue);
-  }
-  //FORM THE OVERALL PRODUCT, y_t * K * y
-  for (i=0; i<data.size(); i++)
-    logLike += data[i] * workingVector[i];
-
-  return(logLike);
-}
-*/

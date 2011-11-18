@@ -1,21 +1,40 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include "multinomial_header.h"
 
-//Function: binevidence.
-//
-//Note: This calculates the log evidence for data under the Bernoulli model.
-//A different routine should be written in place of this for multinomial data.
-//
-//Inputs:
-//  tr_node - pointers of nodes in the dendrogram.
-//  dim - feature size or dimension of the input data.
-//  alpha - vector (length=dim) of hyperparameters for Beta prior.
-//  beta - vector (length=dim) of hyperparameters for Beta prior.
-//  index1 - index of the first input cluster.
-//  index2 - index of the second input cluster (set to -1 if there is only one input).
-//Outputs:
-//  logEvidence - scalar log evidence of data under multivariate Bernoulli model.
+/* ----------------------------------------------------------------------
+   This calculates the log evidence for data under the Bernoulli model.
+   A different routine should be written in place of this for multinomial data.
+   
+   Inputs:
+      tr_node - pointers of nodes in the dendrogram.
+      dim - feature size or dimension of the input data.
+      alpha - vector (length=dim) of hyperparameters for Beta prior.
+      beta - vector (length=dim) of hyperparameters for Beta prior.
+      index1 - index of the first input cluster.
+      index2 - index of the second input cluster (set to -1 if there is only one input).
+   
+   Outputs:
+      logEvidence - scalar log evidence of data under multivariate Bernoulli model.
+---------------------------------------------------------------------- */
 
-double binevidence(NODE* tr_node, int dim, double** hyperParameters,int index1, int index2, int nFeatureValues) {
+double binevidence(NODE* tr_node,
+		   int dim,
+		   double** hyperParameters,
+		   int index1,
+		   int index2,
+		   int nFeatureValues)
+{
   //----------------------------------------------------------------------
   // DECLARATIONS --------------------------------------------------------
   //----------------------------------------------------------------------
@@ -78,8 +97,3 @@ double binevidence(NODE* tr_node, int dim, double** hyperParameters,int index1, 
   delete []sumHyper;
   return logEvidence;
 }
-//*****************************************************************************
-//*****************************************************************************
-//----------------------------------------------------------------------
-// ----------------------------------------
-//----------------------------------------------------------------------

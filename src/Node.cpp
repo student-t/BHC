@@ -1,259 +1,248 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include "Node.h"
 #include <limits>
 
+/* ----------------------------------------------------------------------
+   Hard-coded to the value in Heller/Xu's code
+------------------------------------------------------------------------- */
 
-//CONSTRUCTOR - NO DATA ITEMS
-Node::Node() {}
+const double Node::dirichletProcessParameter=0.001;
 
+/* ----------------------------------------------------------------------
+    Default constructor.
+------------------------------------------------------------------------- */
 
+Node::Node(){}
 
-//CONSTRUCTOR - ONE DATA ITEM (HENCE THE INPUT ISN'T A VECTOR)
-//a node should only need to know about mergers with lower-ID other nodes
-//Therefore, we pass this method a vector of the lower-ID nodes (if any)
-Node::Node(DataSet *dataSet, vector<Node> treeNode)
+/* ----------------------------------------------------------------------
+   Factory method to instantiate this class. It creates a node consisting
+   of a single data item (as specified in the argument).
+------------------------------------------------------------------------- */
+
+Node Node::CreateDataNode(DataSet& dataSet, const int arg_nodeID)
 {
-  //DECLARATIONS
-  int    i;
-  vector<double> clusterData;
-  //INITIALISE THE OBJECT VARIABLES
-  nodeID                    = treeNode.size();//this makes it the n+1th node
-  itemIndex.push_back(nodeID);//associated with the n+1th data item
-  dirichletProcessParameter = 0.001;//for now, hardwire this to the value used in Heller, Xu's codes
-  d_k                       = log(dirichletProcessParameter);//this is actually log(d_k) from the paper
-  mergePrior                = 1;
-  Noise			    = dataSet->GetClusterNoise(nodeID);
-  logEvidence               = dataSet->SingleClusterLogEvidence(itemIndex, lengthScale, NoiseFree, Noise, mixtureComponent);//no point computing logevidence for a single gene
-  leftChildIndex            = -1;
-  rightChildIndex           = -1;
-  mergeFlag                 = 0;
-  nItems                    = 1;
-  clusterlengthScale	= vector<double>(nodeID, 0);
-  clusterNoiseFree = vector<double>(nodeID, 0);
-  clusterNoise = vector<double>(nodeID, 0);
-  clusterMixtureComponent = vector<double>(nodeID, 0);
-  mergeFlag=0;
-  //IF THIS ISN'T THE FIRST NODE, NEED SOME OTHER INITIALISATIONS
-  if (nodeID>0)
-  {
-    //INITIALISE VECTORS TO HOLD MERGER LOG-PROBABILITIES PLUS USEFUL INTERMEDIATES
-    num1                = vector<double>(nodeID, 0);
-    num2                = vector<double>(nodeID, 0);
-    mergeLogProbability = vector<double>(nodeID, -numeric_limits<double>::infinity());
-    LogEvidenceForNewCluster = vector<double>(nodeID, 0);
-    //CALCULATE THE MERGER PROBABILITIES
-#pragma omp parallel for default(shared) schedule(dynamic,1)
-    for (i=0; i<nodeID; i++)
-      {
-	ComputeMergeLogProbability(dataSet, treeNode[i]);
-      }
-  }
+  Node thisNode=Node();
+  double lengthScale, noiseFreeScale, noiseSigma, mixtureComponent;
+
+  // Set all the variables to their default values
+  thisNode.nodeID=arg_nodeID;
+  thisNode.dataID=arg_nodeID;
+  thisNode.childDataIDs.push_back(thisNode.dataID);
+  thisNode.childNodeIDs.push_back(thisNode.nodeID);
+  thisNode.leftChildNodeID=thisNode.rightChildNodeID=-1;
+  thisNode.log_d_k=log(dirichletProcessParameter);
+  thisNode.mergeFlag=false;
+  thisNode.mergePrior=1.0;
+  thisNode.clusterLogEvidence=-numeric_limits<double>::infinity();
+
+  // Find the optimised hyperparameters for this node and compute the
+  // overall log-evidence estimate
+  thisNode.lowerBoundLogEvidence
+    = dataSet.SingleClusterLogEvidence(thisNode.childDataIDs,
+				       lengthScale,
+				       noiseFreeScale,
+				       noiseSigma,
+				       mixtureComponent);
+  return thisNode;
 }
 
+/* ----------------------------------------------------------------------
+   Factory method to instantiate this class. It takes two nodes and
+   merges them.
+------------------------------------------------------------------------- */
 
-
-// Culprit
-//CONSTRUCTOR - MERGE TWO EXISTING NODES TOGETHER
-//when merging, we wish to construct a new node based on two child nodes
-Node::Node(DataSet *dataSet, vector<Node> treeNode, vector<int> index)
+Node Node::CreateMergerNode(DataSet& dataSet,
+			    const Node& node1,
+			    const Node& node2,
+			    const int arg_nodeID)
 {
-  //DECLARATIONS
-  int i;
-  double tr1, tr2, a, b;//intermediates for computing weights
-  Node node1, node2;
-  //EXTRACT THE NODES THAT WE'RE GOING TO MERGE
-  node1 = treeNode[index[0]];
-  node2 = treeNode[index[1]];
+  Node thisNode=Node();
+  double tr1,tr2,a,b,ckt,pk,gell,num1,num2;
+  double lengthScale, noiseFreeScale, noiseSigma, mixtureComponent;
 
-  //INITIALISE/UPDATE SOME OBJECT TAGS
-  dirichletProcessParameter = 0.001;//for now, hardwire this to the value used in Heller, Xu's codes
-  mergeFlag                 = 0;
-  nItems                    = node1.nItems + node2.nItems;
-  mergePrior                = node1.mergePrior + node2.mergePrior;
-  Noise			    = node1.clusterNoise[index[1]];  // Depends on node1.nodeID > node2.nodeID
-  //STORE THE LOG-EVIDENCE FOR THIS MIXTURE COMPONENT
-  clusterLogEvidence = node1.mergeLogProbability[node2.nodeID];
-  //UPDATE THE VARIOUS nodeIDs
-  leftChildIndex  = node1.nodeID;
-  rightChildIndex = node2.nodeID;
-  nodeID          = treeNode.size();//this makes it the n+1th node
+  assert(node1.AllowedToMerge() && node2.AllowedToMerge());
   
-  //UPDATE THE VECTOR OF DATA ITEM INDICES
-  itemIndex.insert(itemIndex.end(), node1.itemIndex.begin(), node1.itemIndex.end());
-  itemIndex.insert(itemIndex.end(), node2.itemIndex.begin(), node2.itemIndex.end());
+  // Default values
+  thisNode.nodeID=arg_nodeID;
+  thisNode.dataID=-1;
+  thisNode.childNodeIDs=node1.childNodeIDs;
+  thisNode.childNodeIDs.insert(thisNode.childNodeIDs.end(),
+			       node2.childNodeIDs.begin(),
+			       node2.childNodeIDs.end());
+  thisNode.childDataIDs=node1.childDataIDs;
+  thisNode.childDataIDs.insert(thisNode.childDataIDs.end(),
+			       node2.childDataIDs.begin(),
+			       node2.childDataIDs.end());
+  thisNode.leftChildNodeID=node1.GetNodeID();
+  thisNode.rightChildNodeID=node2.GetNodeID();
+  thisNode.mergeFlag=false;
 
-  //COMPUTE USEFUL INTERMEDIATE VALUES
-  tr1  = log(dirichletProcessParameter) + gammaln(node1.mergePrior + node2.mergePrior);
-  tr2  = node1.d_k + node2.d_k;
-  a    = max(tr1,tr2);
-  b    = min(tr1,tr2);
-  d_k  = a + log(1+exp(b-a));
-  //UPDATE OVERALL LOG-EVIDENCE ESTIMATE
-  a           = max(node1.num1[node2.nodeID], node1.num2[node2.nodeID]);
-  b           = min(node1.num1[node2.nodeID], node1.num2[node2.nodeID]);
-  logEvidence = a + log(1+exp(b-a));
-  //INITIALISE VECTORS TO HOLD MERGER LOG-PROBABILITIES PLUS USEFUL INTERMEDIATES
-  num1                = vector<double>(nodeID, 0);
-  num2                = vector<double>(nodeID, 0);
-  mergeLogProbability = vector<double>(nodeID, -numeric_limits<double>::infinity());
-  LogEvidenceForNewCluster = vector<double>(nodeID, 0);
-  clusterlengthScale	= vector<double>(nodeID, 0);
-  clusterNoiseFree = vector<double>(nodeID, 0);
-  clusterNoise = vector<double>(nodeID, 0);
-  clusterMixtureComponent = vector<double>(nodeID, 0);
-  //CALCULATE THE MERGER PROBABILITIES
-#pragma omp parallel for default(shared) schedule(dynamic,1)
-  for (i=0; i<nodeID; i++)
-  {
-    ComputeMergeLogProbability(dataSet, treeNode[i]);
-  }
+  // Compute the cluster log evidence and lower bound log evidence
+  // and update the log_d_k and merge prior
+  tr1=log(dirichletProcessParameter)+gammaln(node1.mergePrior+node2.mergePrior);
+  tr2=node1.log_d_k+node2.log_d_k;
+  a=max(tr1,tr2);
+  b=min(tr1,tr2);
+  ckt=a+log(1.0+exp(b-a));
+  pk=tr1-ckt;
+  gell=dataSet.SingleClusterLogEvidence(thisNode.childDataIDs,
+					lengthScale,
+					noiseFreeScale,
+					noiseSigma,
+					mixtureComponent);
+  num1=pk+gell;
+  num2=tr2-ckt+node1.lowerBoundLogEvidence+node2.lowerBoundLogEvidence;
+  thisNode.clusterLogEvidence=num1-num2;
+  a=max(num1,num2);
+  b=min(num1,num2);
+  thisNode.lowerBoundLogEvidence=a+log(1.0+exp(b-a));
+  thisNode.log_d_k=ckt;
+  thisNode.mergePrior=node1.mergePrior+node2.mergePrior;
+
+  return thisNode;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//COMPUTE THE MERGER PROBABILITY BETWEEN THIS NODE AND ANOTHER NODE
-void Node::ComputeMergeLogProbability(DataSet *dataSet, Node newNode)
+int Node::GetDataID() const
 {
-  //DECLARATIONS
-  double tr1, tr2, a, b, ckt, pk, gell;//intermediates for computing weights
-  vector<int> mergeIndex=itemIndex;
-  vector<int> newIndex  =newNode.itemIndex;
-  double newlengthScale, newNoiseFree, newNoise, newMixtureComponent; //the hyperparameters for the cluster
-  vector<double> clusterData;
-  //CHECK TO SEE IF THIS MERGE IS ALLOWED
-  if (mergeFlag==1 || newNode.mergeFlag==1)
-    mergeLogProbability[newNode.nodeID] = -numeric_limits<double>::infinity();//if not allowed, skip the calculation and set P(merge)=0
-  else
-  {
-    //ADD THE NEW INDEX TO THE OBJECT
-    mergeIndex.insert(mergeIndex.end(), newIndex.begin(), newIndex.end());
-    //COMPUTE USEFUL INTERMEDIATE VALUES
-    tr1  = log(dirichletProcessParameter) + gammaln(mergePrior + newNode.mergePrior);
-    tr2  = d_k + newNode.d_k;
-    a    = max(tr1,tr2);
-    b    = min(tr1,tr2);
-    ckt  = a + log(1+exp(b-a));
-    pk   = tr1 - ckt;
-
-    //cout << "mergeIndex:" ;
-    //for (i=0; i<mergeIndex.size(); i++){
-    //cout << mergeIndex[i] << " ";
-    //}
-    //cout << endl;
-    gell = dataSet->SingleClusterLogEvidence(mergeIndex, newlengthScale, newNoiseFree, newNoise, newMixtureComponent);
-    //cout << "gell in Node::ComputeMergeLogProbability:" << gell << endl;
-    //UPDATE THE OBJECT TAGS
-    num1[newNode.nodeID] = pk + gell;
-    num2[newNode.nodeID] = tr2 - ckt + logEvidence + newNode.logEvidence; // backtrace
-
-    mergeLogProbability[newNode.nodeID] = num1[newNode.nodeID] - num2[newNode.nodeID];
-
-    LogEvidenceForNewCluster[newNode.nodeID] = gell;
-    clusterlengthScale[newNode.nodeID]	= newlengthScale;
-    clusterNoiseFree[newNode.nodeID] = newNoiseFree;
-    clusterNoise[newNode.nodeID] = newNoise;
-    if (dataSet->GetRobustMode() == 1)
-    {
-      clusterMixtureComponent[newNode.nodeID] = newMixtureComponent;
-    }
-  }
+  return dataID;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-//METHOD TO WRITE OUT THE RESULTS FROM A VECTOR OF NODES IN SUCH A WAY THAT
-//THEY CAN EASILY BE READ INTO R
-void Node::OutputResultsToFile(vector<Node> treeNode, string outputFileName)
+int Node::GetNodeID() const
 {
-  //DECLARATIONS
-  int           i;
-  int          nItems;
-  ofstream     outputFile(outputFileName.c_str());
-  //FIND SOME USEFUL VALUES
-  nItems = (treeNode.size() + 1)/2; //there are always n-1 mergers in the BHC algorithm
-  //WRITE OUT RESULTS TO FILE
+  return nodeID;
+}
+
+/* ---------------------------------------------------------------------- */
+
+int Node::GetLeftChildNodeID() const
+{
+  return leftChildNodeID;
+}
+
+/* ---------------------------------------------------------------------- */
+
+int Node::GetRightChildNodeID() const
+{
+  return rightChildNodeID;
+}
+
+/* ---------------------------------------------------------------------- */
+
+double Node::GetClusterLogEvidence() const
+{
+  return clusterLogEvidence;
+}
+
+/* ---------------------------------------------------------------------- */
+
+double Node::GetLowerBoundLogEvidence() const
+{
+  return lowerBoundLogEvidence;
+}
+
+/* ---------------------------------------------------------------------- */
+
+int Node::GetNumItems() const
+{
+  return childNodeIDs.size();
+}
+
+/* ---------------------------------------------------------------------- */
+
+bool Node::AllowedToMerge() const
+{
+  return !mergeFlag;
+}
+
+/* ---------------------------------------------------------------------- */
+
+vector<int> Node::GetChildDataIDs() const
+{
+  return childDataIDs;
+}
+
+/* ---------------------------------------------------------------------- */
+
+vector<int> Node::GetChildNodeIDs() const
+{
+  return childNodeIDs;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Node::SetNodeID(int newID)
+{
+  nodeID=newID;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Node::SetLeftChildNodeID(int newID)
+{
+  leftChildNodeID=newID;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Node::SetRightChildNodeID(int newID)
+{
+  rightChildNodeID=newID;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Node::FlagAsMerged()
+{
+  mergeFlag=true;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void Node::UnflagAsMerged()
+{
+  mergeFlag=false;
+}
+
+/* ----------------------------------------------------------------------
+   Write the results from a vector of nodes in a format that is easily
+   read into R.
+---------------------------------------------------------------------- */
+
+void Node::OutputResultsToFile(const vector<Node>& treeNode, string outputFileName)
+{
+  int i;
+  ofstream outputFile(outputFileName.c_str());
+  int nItems = (treeNode.size() + 1)/2;
+  
+  // Do the writing
   if (outputFile.is_open())
   {
+    // There are always (nItems-1) merges in BHC
     for (i=nItems; i<2*nItems-1; i++)
     {
-      outputFile << treeNode[i].GetRightChildIndex()+1 << " "
-                 << treeNode[i].GetLeftChildIndex()+1  << " "
+      outputFile << treeNode[i].GetRightChildNodeID()+1 << " "
+                 << treeNode[i].GetLeftChildNodeID()+1  << " "
                  << i-nItems+1                         << " "
                  << treeNode[i].GetClusterLogEvidence() << endl;
     }
     outputFile.close();
   }
-  else cout << "Unable to open file";
+  else cout << "Unable to open file" << endl;
 }
 
-
-
-//METHODS TO HANDLE THE MERGER LOGIC
-int  Node::AllowedToMerge()
-{
-  return (mergeFlag==0);
-}
-void Node::FlagAsMerged()
-{
-  mergeFlag=1;
-}
-
-
-
-//'GET' METHODS
-double      Node::GetMergeProbability(int index)
-{
-  return (mergeLogProbability[index]);
-}
-double      Node::GetClusterLogEvidence()
-{
-  return (clusterLogEvidence);
-}
-double      Node::GetGlobalLogEvidence()
-{
-  return (logEvidence);
-}
-vector<int> Node::GetItemIndex()
-{
-  return (itemIndex);
-}
-int         Node::GetLeftChildIndex()
-{
-  return (leftChildIndex);
-}
-int         Node::GetRightChildIndex()
-{
-  return (rightChildIndex);
-}
-double	    Node::GetClusterLengthScale(int index)
-{
-  return (clusterlengthScale[index]);
-}
-double	    Node::GetClusterNoiseFree(int index)
-{
-  return (clusterNoiseFree[index]);
-}
-double	    Node::GetClusterNoise(int index)
-{
-  return (clusterNoise[index]);
-}
-double		Node::GetLogEvidenceForNewCluster(int index)
-{
-  return (LogEvidenceForNewCluster[index]);
-}
-double		Node::GetClusterMixtureComponent(int index)
-{
-  return (clusterMixtureComponent[index]);
-}
-
-
-
-//'SET' METHODS
-void Node::SetNodeID(int inputID)
-{
-  nodeID = inputID;
-}
-void Node::SetMergeFlag(int inputFlag)
-{
-  mergeFlag = inputFlag;
-}
-
+/* ---------------------------------------------------------------------- */

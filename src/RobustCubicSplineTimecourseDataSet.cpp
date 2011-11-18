@@ -1,12 +1,25 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <limits>
+
 #include "RobustCubicSplineTimecourseDataSet.h"
 #include "BlockCovarianceMatrix.h"
 
+/* ---------------------------------------------------------------------- */
 
-//CONSTRUCTORS
 RobustCubicSplineTimecourseDataSet::RobustCubicSplineTimecourseDataSet() {}
 
-
+/* ---------------------------------------------------------------------- */
 
 RobustCubicSplineTimecourseDataSet::RobustCubicSplineTimecourseDataSet(string dataFile)
 {
@@ -14,9 +27,10 @@ RobustCubicSplineTimecourseDataSet::RobustCubicSplineTimecourseDataSet(string da
   ReadInData(dataFile);
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-RobustCubicSplineTimecourseDataSet::RobustCubicSplineTimecourseDataSet(const vector<vector<double> >& inputData)
+RobustCubicSplineTimecourseDataSet::
+RobustCubicSplineTimecourseDataSet(const vector<vector<double> >& inputData)
 {
   //COPY THE DATA INTO THE OBJECT
   data = inputData;
@@ -35,14 +49,17 @@ RobustCubicSplineTimecourseDataSet::RobustCubicSplineTimecourseDataSet(const vec
   cout << "----------" << endl;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the log-evidence for a single cluster containing the data items
+   identified by 'itemIndex'.
+------------------------------------------------------------------------- */
 
-
-// COMPUTE THE LOG-EVIDENCE FOR A SINGLE CLUSTER CONTAINING THE DATA ITEMS IDENTIFIED BY 'itemIndex'
-//for now, we just find optimised hyperparameters here; in general, we could consider marginalising over them.
-//If we're optimising the hyperparameters, do we care about storing the best-fit values?  (knowing about the noise level, for
-//example, might be interesting).  If so, we'll need a way of returning the hyperparameters to R.
-//Perhaps the Node class needs the capacity to store the best-fit hyperparameters for the mixture component it represents??
-double RobustCubicSplineTimecourseDataSet::SingleClusterLogEvidence(const vector<int>& itemIndex, double& lengthScale, double& noiseFreeScale, double& noiseSigma, double& mixtureComponent)
+double RobustCubicSplineTimecourseDataSet::
+SingleClusterLogEvidence(const vector<int>& itemIndex,
+			 double& lengthScale,
+			 double& noiseFreeScale,
+			 double& noiseSigma,
+			 double& mixtureComponent)
 {
   //DECLARATIONS
   int i, j;
@@ -75,8 +92,6 @@ double RobustCubicSplineTimecourseDataSet::SingleClusterLogEvidence(const vector
     }
   }
 
-
-
   //OPTIMISE THE HYPERPARAMETERS (LENGTH SCALE); RETURN THE OPTIMISED LOG-EVIDENCE VALUE
   if (noise_mode ==0)
   {
@@ -93,21 +108,22 @@ double RobustCubicSplineTimecourseDataSet::SingleClusterLogEvidence(const vector
   return(logEvidence);
 }
 
+/* ----------------------------------------------------------------------
+   Compute the robust log-evidence missing out a single observation
+   each time.
+------------------------------------------------------------------------- */
 
-
-
-
-
-
-//*****************************************************************************
-//*****************************************************************************
-//METHOD TO COMPUTE THE ROBUST LOGEVIDENCE MISSING OUT A SINGLE OBSERVATION EACH TIME
-
-double RobustCubicSplineTimecourseDataSet::ComputeRobustLogEvidence(const vector<double>& yValues, int nCurrentItems, double& noiseFreeScale, double& noiseSigma, double& mixtureComponent)
+double RobustCubicSplineTimecourseDataSet::
+ComputeRobustLogEvidence(const vector<double>& yValues,
+			 int nCurrentItems,
+			 double& noiseFreeScale,
+			 double& noiseSigma,
+			 double& mixtureComponent)
 {
-  //DECLARATIONS
+  // Declarations
   int blockSize, k,i;
-  double lpst, CF1=0, clpst, pst, st, lst, lft, logfirstEv, logsecondEv, logEvidence, detCovarFunctionk;
+  double lpst, CF1=0, clpst, pst, st, lst, lft, logfirstEv, 
+    logsecondEv, logEvidence, detCovarFunctionk;
   long double C1, C2, a, atop, abot;
   vector<double> yValuesk, yValueskCopy;
   BlockCovarianceMatrix fullCovarFunction, covarFunctionk, invCovarFunctionk;
@@ -211,3 +227,6 @@ double RobustCubicSplineTimecourseDataSet::ComputeRobustLogEvidence(const vector
   //cout << "This is the end of the logEvidence:" << logEvidence << endl;
   return(logEvidence);
 }
+
+/* ---------------------------------------------------------------------- */
+

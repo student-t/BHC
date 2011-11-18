@@ -1,28 +1,40 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #ifndef TIMECOURSEDATASET_H
 #define TIMECOURSEDATASET_H
 
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "DataSet.h"
 #include "BlockCovarianceMatrix.h"
 
-// This class inherits the superclass DataSet.
-// NOTE: in TimecourseDataSet, nFeatures is deprecated (in favour of nTimePoints)
 class TimecourseDataSet : public DataSet
 {
  public:
-  //CONSTRUCTORS
   TimecourseDataSet();
   TimecourseDataSet(string dataFile);
   TimecourseDataSet(const vector<vector<double> >& inputData);
   
-  //OTHER METHODS
   virtual double SingleClusterLogEvidence(const vector<int>& itemIndex,
 					double& lengthScale,
 					double& noiseFreeScale,
 					double& noiseSigma,
 					double& mixtureComponent) = 0;
+  BlockCovarianceMatrix SquareExponentialCovarianceFunctionMissingSingleObservation(vector<vector<double> > KnFC, vector<double> KnC, int KblockSize, int KnRank, int timePoint);
+  double GetMLIINoise(vector<int> itemIndex);
+  
   void ReadInData(string dataFile);
   void ReadInNoise(string dataFile);
   void ReadInNoise(vector<double> noise);
@@ -40,21 +52,22 @@ class TimecourseDataSet : public DataSet
   vector<double> GetDataForCluster(vector<int> itemIndex);
   void SetDataType(string type);
 
-  //TAGS
+
   int nTimePoints;
   double globalNoiseSigma; // estimate
 
  protected:
-  //METHODS
   virtual double ComputeLogDeterminant(double* choleskyMatrix, int nVariables);
-  virtual double ComputeLogEvidence(BlockCovarianceMatrix blockMatrix, vector<double> data);
+  virtual double ComputeLogEvidence(BlockCovarianceMatrix blockMatrix,
+				    vector<double> data);
   double ComputeMaximisedLogEvidence(vector<double> yValues,
 				   double *lengthScale,
 				   double *NoiseFree,
 				   double *Noise);
-  virtual double ComputePartRobustLogEvidenceMissingSingleObservation(double detCovarFunctionk,
-								    BlockCovarianceMatrix invblockMatrix,
-								    vector<double> yValsMissingSingleObservation);
+  virtual double ComputePartRobustLogEvidenceMissingSingleObservation
+    (double detCovarFunctionk,
+     BlockCovarianceMatrix invblockMatrix,
+     vector<double> yValsMissingSingleObservation);
   void OptimiseHyperparameters(const vector<double>& yValues,
 			       double& lengthScale,
 			       double& noiseFreeScale,
@@ -78,27 +91,29 @@ class TimecourseDataSet : public DataSet
 							   double noiseFreeScale);
   BlockCovarianceMatrix AddNoiseToCovarianceFunction(BlockCovarianceMatrix blockMatrix, 
 						     double noiseSigma);
-  BlockCovarianceMatrix AddFixedNoiseToCovarianceFunction(BlockCovarianceMatrix blockMatrix,
-							  double noise_std_error);
+  BlockCovarianceMatrix AddFixedNoiseToCovarianceFunction
+    (BlockCovarianceMatrix blockMatrix,
+     double noise_std_error);
   double ComputeGradient(const BlockCovarianceMatrix& inverseCovarianceFunction,
-		       const BlockCovarianceMatrix& covarianceDerivative,
-		       const vector<double>& alpha);
+			 const BlockCovarianceMatrix& covarianceDerivative,
+			 const vector<double>& alpha);
   double ComputeNoiseGradient(const BlockCovarianceMatrix& inverseCovarianceFunction,
-			    const vector<double>& alpha,
-			    double noiseSigma);
+			      const vector<double>& alpha,
+			      double noiseSigma);
   double GetAlpha(double beta, double sigmaSEM);
   double GammaDistribution(double input, double alpha, double beta);
-  double ComputeNoiseGradientIncludingGammaHyperprior(BlockCovarianceMatrix inverseCovarianceFunction,
-						    vector<double> alpha,
-						    double noiseSigma,
-						    vector<double> gammaParams);
+  double ComputeNoiseGradientIncludingGammaHyperprior
+    (BlockCovarianceMatrix inverseCovarianceFunction,
+     vector<double> alpha,
+     double noiseSigma,
+     vector<double> gammaParams);
   vector<double> OptimiseGammaParams(double sigmaSEM);
-
-  BlockCovarianceMatrix CovarianceFunctionMissingSingleObservation(vector<vector<double> > KnFC,
-								   vector <double> KnC,
-								   int KblockSize,
-								   int KnRank,
-								   int timePoint);
+  BlockCovarianceMatrix CovarianceFunctionMissingSingleObservation
+    (vector<vector<double> > KnFC,
+     vector <double> KnC,
+     int KblockSize,
+     int KnRank,
+     int timePoint);
 
   virtual double ComputeLogEvidenceFromHyperparameters(const vector<double>& yValues,
 						     const int blockSize,
@@ -120,17 +135,13 @@ class TimecourseDataSet : public DataSet
 		  vector<double>& p, vector<double>& x, double& f, const double stpmax,
 		  bool& check, const int blockSize, const vector<double>& yValues);
 
-  void DFPMaximise(vector<double>& p, const vector<int>& fix, const double gtol, double& fret,
-		   const int blockSize, const vector<double>& yValues);
+  void DFPMaximise(vector<double>& p, const vector<int>& fix, const double gtol,
+		   double& fret, const int blockSize, const vector<double>& yValues);
   
-  //TAGS
  protected:
-  //array to store the time-course data; this will be nDataItems * nTimePoints
-  vector<vector<double> > data;
-  //vector to store the time for each point in the time-courses
+  vector<vector<double> > data; // nDataItems * nTimePoints
   vector<double> timePoints;
-  //the range of the y data ymax-ymin
-  double dataRange;
+  double dataRange; // the range of the y data ymax-ymin
 };
 
 #endif // TIMECOURSEDATASET_H

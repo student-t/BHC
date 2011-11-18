@@ -1,20 +1,36 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <limits>
+
 #include "RobustSquaredExponentialTimecourseDataSet.h"
 #include "BlockCovarianceMatrix.h"
 
-//CONSTRUCTORS
+/* ---------------------------------------------------------------------- */
+
 RobustSquaredExponentialTimecourseDataSet::RobustSquaredExponentialTimecourseDataSet() {}
+
+/* ---------------------------------------------------------------------- */
 
 RobustSquaredExponentialTimecourseDataSet::RobustSquaredExponentialTimecourseDataSet(string dataFile)
 {
-  //READ IN THE DATA FROM FILE
   ReadInData(dataFile);
-
 }
 
-RobustSquaredExponentialTimecourseDataSet::RobustSquaredExponentialTimecourseDataSet(const vector<vector<double> >& inputData)
+/* ---------------------------------------------------------------------- */
+
+RobustSquaredExponentialTimecourseDataSet::
+RobustSquaredExponentialTimecourseDataSet(const vector<vector<double> >& inputData)
 {
-  //DECLARATIONS
   //COPY THE DATA INTO THE OBJECT
   data = inputData;
 
@@ -32,16 +48,19 @@ RobustSquaredExponentialTimecourseDataSet::RobustSquaredExponentialTimecourseDat
   //cout << "----------" << endl;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the log-evidence for a single cluster containing the data items
+   identified by 'itemIndex'.
+------------------------------------------------------------------------- */
 
-
-// COMPUTE THE LOG-EVIDENCE FOR A SINGLE CLUSTER CONTAINING THE DATA ITEMS IDENTIFIED BY 'itemIndex'
-//for now, we just find optimised hyperparameters here; in general, we could consider marginalising over them.
-//If we're optimising the hyperparameters, do we care about storing the best-fit values?  (knowing about the noise level, for
-//example, might be interesting).  If so, we'll need a way of returning the hyperparameters to R.
-//Perhaps the Node class needs the capacity to store the best-fit hyperparameters for the mixture component it represents??
-double RobustSquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const vector<int>& itemIndex, double& lengthScale, double& noiseFreeScale, double& noiseSigma, double& mixtureComponent)
+double RobustSquaredExponentialTimecourseDataSet::
+SingleClusterLogEvidence(const vector<int>& itemIndex,
+			 double& lengthScale,
+			 double& noiseFreeScale,
+			 double& noiseSigma,
+			 double& mixtureComponent)
 {
-  //DECLARATIONS
+  // Declarations
   int i, j;
   int index, counter=0;
   int nCurrentItems=itemIndex.size();
@@ -49,9 +68,8 @@ double RobustSquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const
     replicateNoise;
   vector<double> extractedData, yValues;
 
-
-  //EXTRACT THE DATA POINTS FOR THIS CURRENT CLUSTER
-  //data vector is nDataItems*nTimePoints
+  // Extract the data points for this current cluster;
+  // data vector is nDataItems*nTimePoints
   for (i=0; i<nCurrentItems; i++)
   {
     for (j=0; j<nTimePoints; j++)
@@ -60,7 +78,9 @@ double RobustSquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const
       extractedData.push_back(data[index][j]);//store the corresponding data value
     }
   }
-  //RE-CONSTRUCT THE DATA VECTOR SO IT HAS THE CORRECT ORDERING FOR THE BlockCovarianceMatrix FORM WE'LL BE USING
+
+  // Re-construct the data vecotr so it has the correct ordering for the
+  // BlockCovarianceMatrix form we'll be using
   yValues = extractedData;
   counter = 0;
   for (i=0; i<nCurrentItems; i++)
@@ -73,7 +93,7 @@ double RobustSquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const
     }
   }
 
-  //OPTIMISE THE HYPERPARAMETERS (LENGTH SCALE); RETURN THE OPTIMISED LOG-EVIDENCE VALUE
+  // Optimise the hyperparameters (length-scale)
   if (noise_mode ==0)
   {
     OptimiseHyperparameters(yValues, lengthScale, noiseFreeScale, noiseSigma);
@@ -89,25 +109,33 @@ double RobustSquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const
   return logEvidence;
 }
 
+/* ----------------------------------------------------------------------
+   Method to compute the robust log-evidence missing out a single
+   observation each time.
+------------------------------------------------------------------------- */
 
-
-//METHOD TO COMPUTE THE ROBUST LOGEVIDENCE MISSING OUT A SINGLE OBSERVATION EACH TIME
-double RobustSquaredExponentialTimecourseDataSet::ComputeRobustLogEvidence(vector<double> yValues, int nCurrentItems, double& lengthScale, double& noiseFreeScale, double& noiseSigma, double& mixtureComponent)
+double RobustSquaredExponentialTimecourseDataSet::
+ComputeRobustLogEvidence(vector<double> yValues,
+			 int nCurrentItems,
+			 double& lengthScale,
+			 double& noiseFreeScale,
+			 double& noiseSigma,
+			 double& mixtureComponent)
 {
-  //DECLARATIONS
+  // Declarations
   int blockSize, k,i;
   double lpst, CF1=0, clpst, pst, st, lst, lft, logfirstEv, logsecondEv, logEvidence, detCovarFunctionk;
   long double C1=0, C2, a, atop, abot;
   vector<double> yValuesk, yValueskCopy;
   BlockCovarianceMatrix fullCovarFunction, covarFunctionk, invCovarFunctionk;
 
-  //INITIALISATIONS
+  // Initialisations
   st = 0;
   blockSize = yValues.size() / nTimePoints;
   //cout << "yValues.size():" << yValues.size() << "nTimePoints:" << nTimePoints << endl;
   //cout << "LS:" << *p_lengthScale << " NF:" << *p_NoiseFree << " N:" << *p_Noise << endl;
 
-  //COMPUTE FIRST TERM
+  // Compute first term
   fullCovarFunction = SquareExponentialCovarianceFunction(lengthScale, blockSize, noiseFreeScale);
   fullCovarFunction = AddNoiseToCovarianceFunction(fullCovarFunction, noiseSigma);
   lft = ComputeLogEvidence(fullCovarFunction, yValues);
@@ -195,3 +223,6 @@ double RobustSquaredExponentialTimecourseDataSet::ComputeRobustLogEvidence(vecto
   //cout << "This is the end of the logEvidence:" << logEvidence << endl;
   return(logEvidence);
 }
+
+/* ---------------------------------------------------------------------- */
+

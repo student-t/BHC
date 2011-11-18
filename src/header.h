@@ -1,3 +1,15 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #ifndef HEADER_H
 #define HEADER_H
 
@@ -7,9 +19,9 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
-extern bool fast_switch; // Currently not used
+extern bool fast_switch; // declared in header.cpp
 
-// Includes from the STL
+// Standard includes
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -22,13 +34,19 @@ extern bool fast_switch; // Currently not used
 #include <math.h>
 #include <assert.h>
 #include <numeric>
+
 // From this package
 #include "gammaln.h"
-// R includes
-#include "Rconfig.h"
 
-#ifdef SUPPORT_OPENMP
-#ifdef _OPENMP
+// TO ENABLE OPENMP
+// ----------------
+// If building the R package, then uncomment this line:
+#include <Rconfig.h>
+// else, uncomment this line:
+//#define SUPPORT_OPENMP 1
+
+#ifdef SUPPORT_OPENMP // R-support
+#ifdef _OPENMP // Compiler-support
 #include <omp.h>
 #else
 #undef SUPPORT_OPENMP

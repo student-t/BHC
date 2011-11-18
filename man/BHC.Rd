@@ -13,11 +13,12 @@ model selection to decide at each step which clusters to merge.  This
 avoids several limitations of traditional methods, for example how many
 clusters there should be and how to choose a principled distance metric.
 This implementation accepts multinomial (i.e. discrete, with 2+
-categories) or time-series data.
+categories) or time-series data. This version also includes a randomised
+algorithm which is more efficient for larger data sets.
 }
 \usage{
 bhc(data, itemLabels, nFeatureValues, timePoints, dataType,
-    noise, numReps, noiseMode, robust, numThreads, verbose)
+    noise, numReps, noiseMode, robust, numThreads, randomised, m, verbose)
 }
 \details{
   Typical usage for the multinomial case:
@@ -28,6 +29,10 @@ bhc(data, itemLabels, nFeatureValues, timePoints, dataType,
   and the cubic spline covariance:
   \preformatted{bhc(data, itemLabels, 0, timePoints, "cubicspline",
     noise, numReps, noiseMode).}
+  To use the randomised algorithm, simply include the following two
+  arguments:
+  \preformatted{bhc(data, itemLabels, 0, timePoints, "time-course",
+    noise, numReps, noiseMode, randomised=TRUE, m=10)}
     }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -45,19 +50,23 @@ bhc(data, itemLabels, nFeatureValues, timePoints, dataType,
   \item{dataType}{A string specifying the data type. Either
     \code{``multinomial''}, \code{``time-course''}, or \code{``cubicspline''}.}
   \item{noise}{Noise term for each gene, required only if
-    \env{noiseMode=1.} The noise term for each gene is calculated as
+    \env{noiseMode=2.} The noise term for each gene is calculated as
     \deqn{\frac{\sum(\mathrm{residuals}^2)}{(\mathrm{number\, of\,
 	  observations\, for\, gene} - 1)(\mathrm{number\, of\,
 	  replicates})},} where (number of observations for
       gene) is typically (number of time points * number of replicates).}
   \item{numReps}{Number of replicates per observation.}
-  \item{noiseMode}{Noise mode. If 0 then fitted noise; 1 fixed noise; 2 estimated
+  \item{noiseMode}{Noise mode. If 0 then fitted noise; 2 estimated
     noise from replicates.}
   \item{robust}{0 to use single Gaussian likelihood, 1 to use mixture
     likelihood.}
   \item{numThreads}{The BHC library has been parallelised using
     OpenMP (currently on UN*X systems only). Specify here the number of
     threads to use (the default value is 1).}
+  \item{randomised}{Set to TRUE if you wish to use the randomised
+    algorithm.}
+  \item{m}{If randomised is set to TRUE, then this is the dimension of
+    the randomly chosen subset D_m in the randomised algorithm.}
   \item{verbose}{If set to TRUE, the algorithm will output
     some information to screen as it runs.}
 }
@@ -67,14 +76,12 @@ bhc(data, itemLabels, nFeatureValues, timePoints, dataType,
 }
 \references{\emph{Bayesian Hierarchical Clustering}, Heller + Ghahramani, Gatsby Unit Technical Report GCNU-TR
   2005-002 (2005); also see shorter version in ICML-2005;
-
 \emph{R/BHC:fast Bayesian hierarchical clustering for microarray data}, Savage et
   al, BMC Bioinformatics 10:242 (2009); 
-
 \emph{Bayesian hierarchical clustering for microarray time series data with replicates and outlier measurements}, Cooke et al, currently under review
 }
 \author{
-  Rich Savage, Emma Cooke, and Robert Darkins (binomial case originally written by Yang Xu)
+  Rich Savage, Emma Cooke, Robert Darkins, and Yang Xu
 }
 %\note{}
 \seealso{\code{\link{hclust}}}

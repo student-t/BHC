@@ -1,27 +1,39 @@
-#include "SquaredExponentialTimecourseDataSet.h"
-#include "BlockCovarianceMatrix.h"
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <limits>
 
+#include "SquaredExponentialTimecourseDataSet.h"
+#include "BlockCovarianceMatrix.h"
 
+/* ---------------------------------------------------------------------- */
 
 SquaredExponentialTimecourseDataSet::SquaredExponentialTimecourseDataSet() {}
 
-
+/* ---------------------------------------------------------------------- */
 
 SquaredExponentialTimecourseDataSet::SquaredExponentialTimecourseDataSet(string dataFile)
 {
-  //READ IN THE DATA FROM FILE
   ReadInData(dataFile);
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-SquaredExponentialTimecourseDataSet::SquaredExponentialTimecourseDataSet(const vector<vector<double> >& inputData)
+SquaredExponentialTimecourseDataSet::
+SquaredExponentialTimecourseDataSet(const vector<vector<double> >& inputData)
 {
-  //COPY THE DATA INTO THE OBJECT
   data = inputData;
 
-  //FIND THE DATA SIZE
+  // Find the data size
   nDataItems  = data.size();
   nFeatures   = data[0].size();
   nTimePoints = nFeatures;
@@ -33,27 +45,26 @@ SquaredExponentialTimecourseDataSet::SquaredExponentialTimecourseDataSet(const v
   //cout << "----------" << endl;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the log-evidence for a single cluster containing the data
+   items identified by 'itemIndex'.
+------------------------------------------------------------------------- */
 
-
-// COMPUTE THE LOG-EVIDENCE FOR A SINGLE CLUSTER CONTAINING THE DATA ITEMS
-// IDENTIFIED BY 'itemIndex'.
-// For now, we just find optimised hyperparameters here; in general, we could
-// consider marginalising over them.
-// If we're optimising the hyperparameters, do we care about storing the best-fit
-// values? (Knowing about the noise level, for example, might be interesting).
-// If so, we'll need a way of returning the hyperparameters to R.
-// Perhaps the Node class needs the capacity to store the best-fit hyperparameters
-// for the mixture component it represents??
-double SquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const vector<int>& itemIndex, double& lengthScale, double& noiseFreeScale, double& noiseSigma, double& mixtureComponent)
+double SquaredExponentialTimecourseDataSet::
+SingleClusterLogEvidence(const vector<int>& itemIndex,
+			 double& lengthScale,
+			 double& noiseFreeScale,
+			 double& noiseSigma,
+			 double& mixtureComponent)
 {
-  //DECLARATIONS
+  // Declarations
   int i, j, index;
   const int nCurrentItems=itemIndex.size();
   double replicateNoise,logEvidence=-numeric_limits<double>::infinity();
   vector<double> yValues=vector<double>(nCurrentItems*nTimePoints);
 
-  //EXTRACT THE DATA POINTS FOR THIS CURRENT CLUSTER
-  // Store the relevant data in row-major order in yValues
+  // Extract the data points for this current cluster;
+  // store the relevant data in yValues in row-major order
   for (i=0; i<nCurrentItems; i++)
   {
     index=i;
@@ -64,13 +75,11 @@ double SquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const vecto
     }
   }
 
-  //OPTIMISE THE HYPERPARAMETERS (LENGTH SCALE); RETURN THE OPTIMISED LOG-EVIDENCE VALUE
-
+  // Optimise the hyperparameters (length-scale, noise-free-scale, noise-sigma)
   if (noise_mode == 0 )
   {
     OptimiseHyperparameters(yValues, lengthScale, noiseFreeScale, noiseSigma);
     logEvidence = ComputeMaximisedLogEvidence(yValues, lengthScale, noiseFreeScale, noiseSigma);
-    //cerr << logEvidence << endl;
   }
   else if (noise_mode == 1)
   {
@@ -86,42 +95,52 @@ double SquaredExponentialTimecourseDataSet::SingleClusterLogEvidence(const vecto
   }
   else
   {
-    cout << "error: noise_mode not recogised" <<endl;
+    cout << "Error: noise_mode not recogised" <<endl;
   }
   return logEvidence;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-double  SquaredExponentialTimecourseDataSet::ComputeMaximisedLogEvidence(vector<double> yValues, double& lengthScale, double& noiseFreeScale, double& noiseSigma)
+double  SquaredExponentialTimecourseDataSet::
+ComputeMaximisedLogEvidence(vector<double> yValues,
+			    double& lengthScale,
+			    double& noiseFreeScale,
+			    double& noiseSigma)
 {
-  //DECLARATIONS
+  // Declarations
   int blockSize;
   BlockCovarianceMatrix covarFunction;
   double logEvidence;
   
-  //FIND BLOCK SIZE
+  // Find block size
   blockSize = yValues.size() / nTimePoints;
-  
-  //CALCULATE MAXIMISED LOG_EVIDENCE
-  covarFunction = SquareExponentialCovarianceFunction(lengthScale, blockSize, noiseFreeScale);
+
+  // Calculate maximised log-evidence
+  covarFunction = SquareExponentialCovarianceFunction(lengthScale,
+						      blockSize, 
+						      noiseFreeScale);
   covarFunction = AddNoiseToCovarianceFunction(covarFunction, noiseSigma);
   logEvidence = ComputeLogEvidence(covarFunction, yValues);
 
   return logEvidence;
 }
 
+/* ----------------------------------------------------------------------
+   Optimise the hyperparameters for the GP model, returning the optimal
+   log-evidence. The yValues should contain distinct time points.
+   This uses a quasi-Newton method (implemented in TimecourseDataSet)
+   to optimise the hyperparameters:
+      - lengthScale (of the SE covariance function)
+      - noiseFreeScale (the amplitude of the SE covariance function term)
+      - noiseSigma
+------------------------------------------------------------------------- */
 
-
-// Optimise the hyperparameters for the GP model, returning the optimal log-evidence.
-// The yValues should contain distinct time points, not duplicates.
-// This method uses the Broyden-Fletcher-Goldfarb-Shanno (BFGS) variant of
-// the Davidon-Fletcher-Powell (DFP) optimisation method (quasi-Newton).
-// Hyperparameters are:
-//  - lengthScale (of the SE covariance function)
-//  - the noiseFreeScale (the amplitude of the SE covariance function term)
-//  - noiseSigma
-void SquaredExponentialTimecourseDataSet::OptimiseHyperparameters(const vector<double>& yValues, double& lengthScale, double& noiseFreeScale, double& noiseSigma)
+void SquaredExponentialTimecourseDataSet::
+OptimiseHyperparameters(const vector<double>& yValues,
+			double& lengthScale,
+			double& noiseFreeScale,
+			double& noiseSigma)
 {
   int i;
   int blockSize = yValues.size() / nTimePoints;
@@ -130,7 +149,7 @@ void SquaredExponentialTimecourseDataSet::OptimiseHyperparameters(const vector<d
   vector<double> params(3);
   vector<int> fix(3);
   
-  // GUESS A STARTING STATE USING A VERY COARSE METHOD
+  // Guess a starting state using a coarse-grained method
   bestLengthScale=2.0;
   params[1]=1.0;
   params[2]=0.5;
@@ -149,19 +168,19 @@ void SquaredExponentialTimecourseDataSet::OptimiseHyperparameters(const vector<d
     }
   params[0]=bestLengthScale;
 
-  // NOW WE DO THE ACTUAL MAXIMISATION
-  // Init
+  // Now do the actual maximisation
   fix[0]=fix[1]=fix[2]=0; // do not fix any params
   double fret=0;
   double gtol=fast_switch ? (1.0e-1) : (1.0e-2); // the convergence tolerance
-  // Maximise
   DFPMaximise(params,fix,gtol,fret,blockSize,yValues);
+  
   // Return the result
   lengthScale=params[0];
   noiseFreeScale=params[1];
   noiseSigma=params[2];
 }
 
+/* ---------------------------------------------------------------------- */
 
 void SquaredExponentialTimecourseDataSet::
 ImposeConstraintsOnHyperparameters(vector<double>& params)
@@ -172,6 +191,7 @@ ImposeConstraintsOnHyperparameters(vector<double>& params)
   params[2] = MIN(params[2], 1.0); // noiseSigma
 }
 
+/* ---------------------------------------------------------------------- */
 
 double SquaredExponentialTimecourseDataSet::
 ComputeLogEvidenceFromHyperparameters(const vector<double>& yValues,
@@ -186,6 +206,7 @@ ComputeLogEvidenceFromHyperparameters(const vector<double>& yValues,
   return ComputeLogEvidence(covarFunc, yValues);
 }
 
+/* ---------------------------------------------------------------------- */
 
 void SquaredExponentialTimecourseDataSet::
 ComputeGradientsFromHyperparameters(const vector<double>& yValues,
@@ -214,6 +235,8 @@ ComputeGradientsFromHyperparameters(const vector<double>& yValues,
   grad[1] = ComputeGradient(covarFunc, covarDeriv_nf, alpha);
   grad[2] = ComputeNoiseGradient(covarFunc, alpha, params[2]);
 }
+
+/* ---------------------------------------------------------------------- */
 
 void SquaredExponentialTimecourseDataSet::
 ComputeLogEvidenceAndGradientsFromHyperparameters(const vector<double>& yValues,
@@ -247,7 +270,7 @@ ComputeLogEvidenceAndGradientsFromHyperparameters(const vector<double>& yValues,
   grad[2] = ComputeNoiseGradient(covarFunc, alpha, params[2]);
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 double SquaredExponentialTimecourseDataSet::GetMLIINoise(vector<int> itemIndex)
 {
@@ -284,7 +307,7 @@ double SquaredExponentialTimecourseDataSet::GetMLIINoise(vector<int> itemIndex)
   return fittedNoise;
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 double SquaredExponentialTimecourseDataSet::CalculateFittedNoiseHyperparameter(const vector<double>& yValues)
 {
@@ -293,11 +316,16 @@ double SquaredExponentialTimecourseDataSet::CalculateFittedNoiseHyperparameter(c
   return noiseSigma;
 }
 
+/* ---------------------------------------------------------------------- */
 
-
-void  SquaredExponentialTimecourseDataSet::OptimiseHyperparametersEstimatedNoise(vector<double> yValues, double& lengthScale, double& noiseFreeScale, double& noiseSigma, double replicateNoise)
+void  SquaredExponentialTimecourseDataSet::
+OptimiseHyperparametersEstimatedNoise(vector<double> yValues,
+				      double& lengthScale,
+				      double& noiseFreeScale,
+				      double& noiseSigma,
+				      double replicateNoise)
 {
-  //DECLARATIONS
+  // Declarations
   int i;
   int blockSize;
   int nIterations=50;
@@ -317,9 +345,10 @@ void  SquaredExponentialTimecourseDataSet::OptimiseHyperparametersEstimatedNoise
   noiseFreeScale=1.0;
   noiseSigma=replicateNoise;
   
-  //FIND BLOCK SIZE
+  // Find block size
   blockSize = yValues.size() / nTimePoints;
-  //FIND THE GAMMA PARAMETERS
+  
+  // Find gamma parameters
   if (replicateNoise < 1.0)
   {
     params = OptimiseGammaParams(replicateNoise);
@@ -383,17 +412,16 @@ void  SquaredExponentialTimecourseDataSet::OptimiseHyperparametersEstimatedNoise
   }
 }
 
+/* ----------------------------------------------------------------------
+   Optimise the hyperparameters for the GP model, returning the optimal
+   log-evidence in the case where noise is fixed for whole clustering.
+---------------------------------------------------------------------- */
 
-
-// OPTIMISE THE HYPERPARAMETERS FOR THE GP MODEL, RETURNING THE OPTIMAL LOG-EVIDENCE IN THE CASE WHERE NOISE IS FIXED FOR WHOLE CLUSTERING
-//xValues should contain the distinct time points (*not* duplicates)
-//This method uses a simple implementation of a gradient ascent method.
-//Hyperparameters are:
-//   - length-scale (of the SE covariance function)
-//   - the noiseFreeScale (ie. amplitude of the SE covariance function term)
-//noiseSigma - THIS IS FIXED FOR THIS VERSION OF THE METHOD
-//
-void  SquaredExponentialTimecourseDataSet::OptimiseHyperparametersFixedNoise(vector<double> yValues, double& lengthScale, double& noiseFreeScale, double& noiseSigma)
+void SquaredExponentialTimecourseDataSet::
+OptimiseHyperparametersFixedNoise(vector<double> yValues,
+				  double& lengthScale,
+				  double& noiseFreeScale,
+				  double& noiseSigma)
 {
   int i;
   int blockSize = yValues.size() / nTimePoints;
@@ -401,8 +429,8 @@ void  SquaredExponentialTimecourseDataSet::OptimiseHyperparametersFixedNoise(vec
   double bestLogEv, trialLogEv;
   vector<double> params(3);
   vector<int> fix(3);
-  
-  // GUESS A STARTING STATE USING A VERY COARSE METHOD
+
+  // Guess a starting state using a coarse-grained method
   bestLengthScale=2.0;
   params[1]=1.0;
   params[2]=0.5;
@@ -421,40 +449,43 @@ void  SquaredExponentialTimecourseDataSet::OptimiseHyperparametersFixedNoise(vec
     }
   params[0]=bestLengthScale;
 
-  // NOW WE DO THE ACTUAL MAXIMISATION
-  // Init
+  // Do the maximisation
   fix[0]=fix[1]=0;
   fix[2]=1; // fix noiseSigma
   double fret=0;
   double gtol=fast_switch ? (1.0e-1) : (1.0e-2); // the convergence tolerance
-  // Maximise
   DFPMaximise(params,fix,gtol,fret,blockSize,yValues);
+  
   // Return the result
   lengthScale=params[0];
   noiseFreeScale=params[1];
   noiseSigma=params[2];
 }
 
+/* ----------------------------------------------------------------------
+   Compute a noise-less square exponential (SE) covariance function.
+---------------------------------------------------------------------- */
 
-
-
-// COMPUTE A NOISE-LESS SQUARE EXPONENTIAL (SE) COVARIANCE FUNCTION
-BlockCovarianceMatrix  SquaredExponentialTimecourseDataSet::SquareExponentialCovarianceFunction(double lengthScale, int blockSize, double noiseFreeScale)
+BlockCovarianceMatrix SquaredExponentialTimecourseDataSet::
+SquareExponentialCovarianceFunction(double lengthScale,
+				    int blockSize,
+				    double noiseFreeScale)
 {
-  //DECLARATIONS
+  // Declarations
   int                    i, j;
   double                 covarElement;
   BlockCovarianceMatrix  blockMatrix;
-  //INITIALISE THE BLOCK MATRIX
+
+  // Initialise the block matrix
   blockMatrix.nRank     = nTimePoints;
   blockMatrix.blockSize = blockSize;
-  
-  //INITIALISE THE COVARIANCE FUNCTION (do this so we can assign to 2 elements each time)
+
+  // Initialise the covariance function
   blockMatrix.noisyCoeff=vector<double>(nTimePoints, 0.0);
   blockMatrix.noiseFreeCoeff=
     vector<vector<double> >(nTimePoints, vector<double>(nTimePoints, 0.0));
-  
-  //COMPUTE EACH ELEMENT OF THE COVARIANCE FUNCTION
+
+  // Compute each element of the covariance function
   for (i=0; i<nTimePoints; i++)
   {
     for (j=i; j<nTimePoints; j++)
@@ -465,8 +496,8 @@ BlockCovarianceMatrix  SquaredExponentialTimecourseDataSet::SquareExponentialCov
       covarElement *= -1;
       covarElement  = exp(covarElement);
       covarElement *= noiseFreeScale;
-      //and store in 2 elements (covariance is symmetric)
-      //this duplicates effort for i==j; not a big deal, computationally :-)
+      // and store in 2 elements (covariance is symmetric)
+      // this duplicates effort for i==j; not a big deal, computationally :-)
       blockMatrix.noiseFreeCoeff[i][j] = covarElement;
       blockMatrix.noiseFreeCoeff[j][i] = covarElement;
     }
@@ -475,31 +506,35 @@ BlockCovarianceMatrix  SquaredExponentialTimecourseDataSet::SquareExponentialCov
   return blockMatrix;
 }
 
+/* ----------------------------------------------------------------------
+   Compute the partial derivative w.r.t. length-scale of a square
+   exponential (SE) covariance function. Note that we've hard-coded
+   noise=0 here (a bit ugly).
+---------------------------------------------------------------------- */
 
-
-// COMPUTE THE PARTIAL DERIVATIVE WRT LENGTH-SCALE OF A SQUARE EXPONENTIAL (SE) COVARIANCE FUNCTION
-//NOTE THAT WE'VE HARD-WIRED NOISE=0 HERE (THIS IS A BIT UGLY)
-BlockCovarianceMatrix  SquaredExponentialTimecourseDataSet::SquareExponential_lengthDerivative(double lengthScale, int blockSize, double noiseFreeScale)
+BlockCovarianceMatrix SquaredExponentialTimecourseDataSet::
+SquareExponential_lengthDerivative(double lengthScale,
+				   int blockSize,
+				   double noiseFreeScale)
 {
-  //DECLARATIONS
-  int                    i, j;
-  double                 covarElement, deltaTime;
+  // Declarations
+  int i, j;
+  double covarElement, deltaTime;
   BlockCovarianceMatrix  blockMatrix;
 
-  //ASSERTIONS ABOUT INPUTS
   assert(lengthScale > 0);
   assert(blockSize > 0);
 
-  //INITIALISE THE BLOCK MATRIX
-  blockMatrix.nRank     = nTimePoints;
+  // Initialise the block matrix
+  blockMatrix.nRank = nTimePoints;
   blockMatrix.blockSize = blockSize;
 
-  //INITIALISE THE COVARIANCE FUNCTION (do this so we can assign to 2 elements each time)
+  // Initialise the covariance function
   blockMatrix.noiseFreeCoeff=
     vector<vector<double> >(nTimePoints, vector<double>(nTimePoints, 0.0));
   blockMatrix.noisyCoeff = vector<double>(nTimePoints, 0.0);
 
-  //COMPUTE EACH ELEMENT OF THE COVARIANCE FUNCTION
+  // Compute each element of the covariance function
   for (i=0; i<nTimePoints; i++)
   {
     for (j=i; j<nTimePoints; j++)
@@ -512,8 +547,8 @@ BlockCovarianceMatrix  SquaredExponentialTimecourseDataSet::SquareExponential_le
       covarElement *= deltaTime*deltaTime;
       covarElement /= lengthScale*lengthScale*lengthScale;
       covarElement *= noiseFreeScale;
-      //and store in 2 elements (covariance is symmetric)
-      //this duplicates effort for i==j; not a big deal, computationally :-)
+      // and store in 2 elements (covariance is symmetric)
+      // this duplicates effort for i==j; not a big deal, computationally :-)
       blockMatrix.noiseFreeCoeff[i][j] = covarElement;
       blockMatrix.noiseFreeCoeff[j][i] = covarElement;
     }
@@ -521,3 +556,5 @@ BlockCovarianceMatrix  SquaredExponentialTimecourseDataSet::SquareExponential_le
 
   return blockMatrix;
 }
+
+/* ---------------------------------------------------------------------- */

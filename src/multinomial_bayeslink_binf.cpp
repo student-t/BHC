@@ -1,22 +1,43 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include <iostream>
-using namespace std;
 #include <math.h>
+
 #include "multinomial_header.h"
 
-//Function: bayeslink_binf.
-//
-//Inputs:
-//  tr_node - pointers of nodes in the dendrogram.
-//  dim - feature size or dimension of the input data.
-//  obs - total number of input data points.
-//  cc - scalar value of precision of Beta prior (initialized in the 'main.cpp').
-//  alp - scalar value of Dirichlet Process hyperparameter (initialized in the 'main.cpp').
-//  min_wt - initial weight value (default=-1000.0 defined in the 'main.cpp').
-//
-//Output:
-//  logEvidence - updates NODE information for construction of the dendrogram.
+using namespace std;
 
-double bayeslink_binf(NODE* tr_node, int dim, int obs, double cc, double alp, double min_wt, int nFeatureValues){
+/* ----------------------------------------------------------------------
+   Inputs:
+      tr_node - pointers of nodes in the dendrogram.
+      dim - feature size or dimension of the input data.
+      obs - total number of input data points.
+      cc - scalar value of precision of Beta prior (initialized in main.cpp).
+      alp - scalar value of Dirichlet Process hyperparameter (initialized in main.cpp).
+      min_wt - initial weight value (default=-1000.0 defined in main.cpp).
+   
+   Output:
+      logEvidence - updates NODE information for construction of the dendrogram.
+---------------------------------------------------------------------- */
+
+double bayeslink_binf(NODE* tr_node,
+		      int dim,
+		      int obs,
+		      double cc,
+		      double alp,
+		      double min_wt,
+		      int nFeatureValues)
+{
   //----------------------------------------------------------------------
   // DECLARATIONS --------------------------------------------------------
   //----------------------------------------------------------------------
@@ -125,13 +146,8 @@ double bayeslink_binf(NODE* tr_node, int dim, int obs, double cc, double alp, do
   //----------------------------------------------------------------------
   // RETURN THE GLOBAL LOG-EVIDENCE ESTIMATE -----------------------------
   //----------------------------------------------------------------------
-  logEvidence = tr_node[merged_node].den; //this should be the final (i.e. root) node; 'den' is the marginal likelihood bound
+  //this should be the final (i.e. root) node; 'den' is the marginal likelihood bound
+  logEvidence = tr_node[merged_node].den;
 
   return logEvidence;
 }
-//*****************************************************************************
-//*****************************************************************************
-//----------------------------------------------------------------------
-// ----------------------------------------
-//----------------------------------------------------------------------
-

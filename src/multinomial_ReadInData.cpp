@@ -1,8 +1,25 @@
+/* ----------------------------------------------------------------------
+   BHC - Bayesian Hierarchical Clustering
+   http://www.bioconductor.org/packages/release/bioc/html/BHC.html
+   
+   Author: Richard Savage, r.s.savage@warwick.ac.uk
+   Contributors: Emma Cooke, Robert Darkins, Yang Xu
+   
+   This software is distributed under the GNU General Public License.
+   
+   See the README file.
+------------------------------------------------------------------------- */
+
 #include "multinomial_header.h"
-//Routine to read in data for the BHC code
-//For the R-interfaced version of this code, the data are passed to this function
-//in a 1D array.  They're then copied into the NODE structures.
-NODE* ReadInData(int dim, int obs, double min_wt, int nFeatureValues, int* inputData){
+
+/* ----------------------------------------------------------------------
+   Routine to read in data for the BHC code.
+   For the R-interfaced version of this code, the data is passed to this
+   function in a 1D array. It is then copied into the NODE structures.
+------------------------------------------------------------------------- */
+
+NODE* ReadInData(int dim, int obs, double min_wt, int nFeatureValues, int* inputData)
+{
   //----------------------------------------------------------------------
   // DECLARATIONS --------------------------------------------------------
   //----------------------------------------------------------------------	
@@ -54,8 +71,3 @@ NODE* ReadInData(int dim, int obs, double min_wt, int nFeatureValues, int* input
   //----------------------------------------------------------------------
   return tr_node;
 }
-//*****************************************************************************
-//*****************************************************************************
-//----------------------------------------------------------------------
-// ----------------------------------------
-//----------------------------------------------------------------------
