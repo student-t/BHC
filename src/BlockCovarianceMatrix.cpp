@@ -558,8 +558,6 @@ ComputeLogLikelihoodProductMissingSingleObservation(const vector<double>& data) 
   vector<double> currentRow;
   vector<double>::const_iterator dataIt=data.begin();
 
-  assert(data_size==(nRank*blockSize-1)); //Should be missing an observation
-
   // Form the product K*y
   logLike=0;
   // going across the rows in the K matrix

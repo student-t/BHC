@@ -13,7 +13,7 @@
 #ifndef HEADER_H
 #define HEADER_H
 
-#define NDEBUG // no debug - disable things like asserts
+#define NDEBUG
 
 // Handy macros
 #define MAX(a,b) ((a)>(b)?(a):(b))
@@ -34,6 +34,7 @@ extern bool fast_switch; // declared in header.cpp
 #include <math.h>
 #include <assert.h>
 #include <numeric>
+#include <ctime>
 
 // From this package
 #include "gammaln.h"
