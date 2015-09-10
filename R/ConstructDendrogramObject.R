@@ -22,7 +22,7 @@ ConstructDendrogramObject <- function(out, nDataItems, nFeatures, itemLabels){
   ##initialise the tree list (stores all the intermediate mergers); define the leaf nodes
   tree   <- rep(list(0), nTotal)
   for (i in 1:nDataItems) {#leaf nodes
-    leaf                      <- list(i)
+    leaf                      <- i
     attr(leaf, 'logEvidence') <- Inf
     attr(leaf, "members")     <- 1L
     attr(leaf, "height")      <- 0.
