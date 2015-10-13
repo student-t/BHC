@@ -1,0 +1,5 @@
+useDynLib(BHC)
+export(bhc)
+export(WriteOutClusterLabels)
+export(DiscretiseData)
+export(FindOptimalBinning)
